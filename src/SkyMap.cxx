@@ -192,7 +192,7 @@ void SkyMap::Paint(Option_t * opt)
 
   paintSpecials(); 
 
-  for (unsigned i = 0; i < sky_graphs.size(); i++) sky_graphs[i].Paint("lsame"); 
+  for (unsigned i = 0; i < sky_graphs.size(); i++) sky_graphs[i].Paint("plsame"); 
   for (unsigned i = 0; i < sky_markers.size(); i++) sky_markers[i].Paint("same"); 
 
   left.Paint(); 

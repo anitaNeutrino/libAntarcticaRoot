@@ -4,16 +4,16 @@
 #include <vector>
 #include "TArrow.h"
 #include "TVector3.h"
-#include "UsefulAdu5Pat.h"
 
 /** 
- * @namespace Functions to calculate the Earth's geo-magnetic field for ANITA
+ * @namespace GeoMagentic Functions to calculate the Earth's geo-magnetic field for ANITA
  *
  * Currently uses the IGRF model
  * 
  */
 
 class TCanvas;
+
 namespace GeoMagnetic{
 
 
@@ -68,14 +68,12 @@ class FieldPoint : public TArrow {
 };
 
 
-  double getExpectedPolarisation(UsefulAdu5Pat& usefulPat, double phiWave, double thetaWave, double xmax=xMaxP19);
-  double getExpectedPolarisationUpgoing(UsefulAdu5Pat& usefulPat, double phiWave, double thetaWave, double pathLength);
-
-  TVector3 getUnitVectorAlongThetaWavePhiWave(UsefulAdu5Pat& usefulPat, double phiWave, double thetaWave);
+  // double getExpectedPolarisation(UsefulAdu5Pat& usefulPat, double phiWave, double thetaWave, double xmax=xMaxP19);
+  // double getExpectedPolarisationUpgoing(UsefulAdu5Pat& usefulPat, double phiWave, double thetaWave, double pathLength);
+  // TVector3 getUnitVectorAlongThetaWavePhiWave(UsefulAdu5Pat& usefulPat, double phiWave, double thetaWave);
 
   const double n_air = 1;
   const double n_ice = 1.31; // might need to check this
-
 
   TVector3 specularReflection(const TVector3& reflectionPointToSource, const TVector3& surfaceNormal);
   TVector3 fresnelReflection(const TVector3& sourceToReflection, const TVector3& surfaceNormal, TVector3& electricFieldVec, double n1=n_air, double n2=n_ice);

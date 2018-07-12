@@ -37,8 +37,6 @@ class BedmapReader// : public TObject
   //for now we're going to store ice thickness here - allows pretty maps like rampdemreader ones to be made, but with ice thickness instead of elevation - nice as it includes the ice shelfs
 
 
-  Double_t Geoid(Double_t latitude);
-
   //BEDMAP data input methods
   void ReadSurfaceElevation(bool icethicknessMode);
   void ReadSurfaceElevationRampDem();

@@ -1,8 +1,8 @@
 #include "TGraphAntarctica.h"
 #include "TROOT.h"
 #include "TVirtualPad.h"
-#include "Adu5Pat.h"
-#include "AnitaDataset.h"
+// #include "Adu5Pat.h"
+// #include "AnitaDataset.h"
 #include "TVirtualPad.h"
 
 ClassImp(TGraphAntarctica)
@@ -61,47 +61,6 @@ void TGraphAntarctica::SetPoint(Int_t i, const AntarcticCoord& coord){
 
 
 
-
-/** 
- * Construct a TGraph antarctica from run firstRun to lastRun (inclusive)
- * This is mostly for plotting purposes, otherwise 
- * 
- * @param firstRun is the first run
- * @param lastRun is the last run
- * @param pointEvery 
- * @param quiet default true
- *
- * @return the newly constructed TGraphAntarctica
- */
-TGraphAntarctica* TGraphAntarctica::makeGpsGraph(int firstRun, int lastRun, int gpsTreeStride,bool quiet){
-  if (!quiet) std::cout << "makeGpsGraph(): starting..." << std::endl;
-
-  // handle default tree stride
-  gpsTreeStride = gpsTreeStride <= 0 ? defaultGpsTreeStride : gpsTreeStride;
-
-  TGraphAntarctica* gr = new TGraphAntarctica();
-
-  for(int run=firstRun; run<=lastRun; run++){
-    if (AnitaVersion::get() == 3) {
-      if (run > 256 && run < 264) {
-	std::cout << "makeGpsGraph(): In ANITA3 runs 257 through 263 are broken, skipping to 264..." << std::endl;
-	run = 264;
-      }
-    }
-
-    AnitaDataset d(run);
-    if (!quiet) std::cout << "makeGpsGraph(): starting run" << run << " - d.N()=" << d.N() << std::endl;
-    for(int entry=0; entry < d.N(); entry+=gpsTreeStride){
-      if (!quiet) std::cout << "makeGpsGraph(): run:" << run << " entry:" << entry << std::endl;
-      d.getEntry(entry);
-      Adu5Pat* pat = d.gps();
-
-      gr->SetPoint(gr->GetN(), pat->longitude, pat->latitude);
-
-    }
-  }
-  return gr;
-}
 
 
 

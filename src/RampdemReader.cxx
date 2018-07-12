@@ -1,14 +1,3 @@
-////////////////////////////////////////
-//  RampdemReader.cxx :
-//
-//  More code stolen from Stephen's Antarctica.cxx
-//  that will read in Rampdem data to use with
-//  UsefulAdu5Pat.cxx to locate sources on the continent
-//
-//
-//////////////////////////////////////////////
-
-
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -16,13 +5,11 @@
 #include <cstring>
 #include "TMath.h"
 #include "RampdemReader.h"
-#include "AnitaGeomTool.h"
+#include "GeoidModel.h"
 #include "TProfile2D.h"
 #include "TGaxis.h"
 #include "TStyle.h"
 #include "TColor.h"
-
-
 
 // Typedefs for parsing the surface data
 typedef std::vector<std::vector<short> > VecVec;
@@ -42,7 +29,6 @@ static HeaderMap cellSizes;
 
 // static functions to read in the data / generic fill histogram function.
 static const VecVec& getDataIfNeeded(RampdemReader::dataSet dataSet);
-
 
 
 
@@ -66,7 +52,7 @@ static double c_bar = 7*pow(eccentricity,6)/120 + 81*pow(eccentricity,8)/1120;
 
 static double d_bar = 4279*pow(eccentricity,8)/161280;
 
-static double c_0 = (2*R_EARTH / sqrt(1-pow(eccentricity,2))) * pow(( (1-eccentricity) / (1+eccentricity) ),eccentricity/2);
+static double c_0 = (2*GeoidModel::R_EARTH / sqrt(1-pow(eccentricity,2))) * pow(( (1-eccentricity) / (1+eccentricity) ),eccentricity/2);
 
 // Varies with latitude, defined here for 71 deg S...
 // static double R_factor = scale_factor*c_0 * pow(( (1 + eccentricity*sin(71*TMath::RadToDeg())) / (1 - eccentricity*sin(71*TMath::RadToDeg())) ),eccentricity/2) * tan((TMath::Pi()/4) - (71*TMath::RadToDeg())/2);
@@ -309,6 +295,7 @@ Double_t RampdemReader::SurfaceAboveGeoidEN(Double_t Easting, Double_t Northing,
  * @return the height of the geoid in metres
  */
 Double_t RampdemReader::Geoid(Double_t latitude) {
+  using namespace GeoidModel;
   return (GEOID_MIN*GEOID_MAX/sqrt(pow(GEOID_MIN,2)-(pow(GEOID_MIN,2)-pow(GEOID_MAX,2))*pow(cos(latitude*TMath::DegToRad()),2)));
 }
 

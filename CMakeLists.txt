@@ -1,7 +1,7 @@
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
 cmake_minimum_required(VERSION 2.8.10)
-project(AnitaCorrelator)
-set(libname "AnitaCorrelator")
+project(AntarcticaRoot)
+set(libname "AntarcticaRoot")
 
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
@@ -54,11 +54,11 @@ else()
  link_directories(${UTIL_LIB_DIR})
 endif()
 
-if(TARGET AnitaEvent)
-  message("AnitaEvent is a target")
-else()
- link_directories(${UTIL_LIB_DIR})
-endif()
+# if(TARGET AnitaEvent)
+#   message("AnitaEvent is a target")
+# else()
+#  link_directories(${UTIL_LIB_DIR})
+# endif()
 
 
 
@@ -90,7 +90,8 @@ ROOT_GENERATE_DICTIONARY(${DICTNAME} ${HEADER_FILES} LINKDEF LinkDef.h)
 
 #---Create a shared library with geneated dictionary
 add_library(${libname} SHARED ${SOURCE_FILES} ${DICTNAME}.cxx)
-target_link_libraries(${libname} ${ZLIB_LIBRARIES} AnitaEvent RootFftwWrapper ${ROOT_LIBRARIES} ${FFTW_LIBRARIES})
+#target_link_libraries(${libname} ${ZLIB_LIBRARIES} RootFftwWrapper ${ROOT_LIBRARIES} ${FFTW_LIBRARIES})
+target_link_libraries(${libname} ${ZLIB_LIBRARIES} ${ROOT_LIBRARIES} ${FFTW_LIBRARIES})
 
 if( ${ROOT_VERSION} VERSION_GREATER "5.99.99")
     add_custom_target(${DICTNAME}.pcm DEPENDS ${DICTNAME})
@@ -101,7 +102,6 @@ message("UTIL_INC_DIR is set to ${UTIL_INC_DIR}")
 message("DICTNAME is set to ${DICTNAME}" )
 message("PROJECT_BINARY_DIR is set to ${PROJECT_BINARY_DIR}")
 
-add_subdirectory(programs)
 
 
 install (FILES ${HEADER_FILES} DESTINATION ${UTIL_INC_DIR})

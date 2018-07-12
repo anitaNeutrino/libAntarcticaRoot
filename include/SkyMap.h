@@ -31,7 +31,7 @@ class SkyMap : public TObject
     void setBackground(const TH2 * background); 
     void addMarker(const TMarker * marker); 
     void addGraph(const TGraph * graph); 
-    void clearMarkers() { sky_markers.clear() ; }
+    void clearMarkers() { sky_markers.clear() ; } 
     void clearGraphs() { sky_graphs.clear() ; } 
 
     virtual ~SkyMap(); 

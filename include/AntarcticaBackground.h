@@ -129,7 +129,7 @@ private:
   void setPadMargins();
 
   Bool_t fUseToolTip;
-  TGToolTip* fToolTip;
+  TGToolTip* fToolTip = nullptr;
   TString fToolTipUnits;
   void setToolTipUnits();
 

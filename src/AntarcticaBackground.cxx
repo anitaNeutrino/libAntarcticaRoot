@@ -30,7 +30,7 @@ AntarcticaBackground::AntarcticaBackground(RampdemReader::dataSet dataSet, Int_t
 AntarcticaBackground::~AntarcticaBackground(){
   delete fPalSetter;
   delete fPalUnsetter;
-  if(gPad){
+  if(gPad && !gPad->IsBatch()){
     SetToolTip(false);
     gPad->Modified();
     gPad->Update();

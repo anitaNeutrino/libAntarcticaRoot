@@ -50,7 +50,7 @@ public:
 
 
   RampdemReader();
-  ~RampdemReader();
+  virtual ~RampdemReader();
 
   // Class could (should) now be implemented as a namespace with loads any data behind the scenes...
   // All the cool kids are marking things as deprecated these days
