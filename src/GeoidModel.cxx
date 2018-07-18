@@ -1,5 +1,6 @@
 #include "GeoidModel.h"
 #include "TMath.h"
+#include "RampdemReader.h"
 #include <iostream>
 
 void GeoidModel::getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Double_t p[3]){
@@ -67,39 +68,55 @@ Double_t GeoidModel::getGeoidRadiusAtLatitude(Double_t latitude) {
   
 
 void GeoidModel::Vector::setCartesianFromGeoid() {
-  GeoidModel::getCartesianCoords(fLatitude, fLongitude, fAltitude, fLastGeoid);
-  SetXYZ(fLastGeoid[0], fLastGeoid[1], fLastGeoid[2]);
+  GeoidModel::getCartesianCoords(fLatitude, fLongitude, fAltitude, fCartAtLastGeoidCalc);
+  SetXYZ(fCartAtLastGeoidCalc[0], fCartAtLastGeoidCalc[1], fCartAtLastGeoidCalc[2]);
 }
 
 
 
 void GeoidModel::Vector::setGeoidFromCartesian() const {
 
-  if(X() != fLastGeoid[0] || Y() != fLastGeoid[1] || Z() != fLastGeoid[2]){
+  if(X() != fCartAtLastGeoidCalc[0] ||
+     Y() != fCartAtLastGeoidCalc[1] ||
+     Z() != fCartAtLastGeoidCalc[2]){
     // Then we've moved, so must recalculate lon, lat alt;
-    GetXYZ(fLastGeoid);
-    GeoidModel::getLatLonAltFromCartesian(fLastGeoid, fLatitude, fLongitude, fAltitude);
+    GetXYZ(fCartAtLastGeoidCalc);
+    GeoidModel::getLatLonAltFromCartesian(fCartAtLastGeoidCalc, fLatitude, fLongitude, fAltitude);
   }  
 }
 
 
 void GeoidModel::Vector::setAnglesFromCartesian() const {
 
-  bool xDirty = X() != fLastAngle[0];
-  bool yDirty = Y() != fLastAngle[1];
+  bool xDirty = X() != fCartAtLastAngleCal[0];
+  bool yDirty = Y() != fCartAtLastAngleCal[1];
   
   if(xDirty || yDirty){
     fPhi = TVector3::Phi();
-    fLastAngle[0] = X();
-    fLastAngle[1] = Y();
+    fCartAtLastAngleCal[0] = X();
+    fCartAtLastAngleCal[1] = Y();
   }
 
-  if(xDirty || yDirty || Z() != fLastAngle[2]){
+  if(xDirty || yDirty || Z() != fCartAtLastAngleCal[2]){
     fTheta = TVector3::Theta();
-    // if x or y was dirty, already stored them in fLastAngle
-    fLastAngle[2] = Z();
+    // if x or y was dirty, already stored them in fCartAtLastAngleCal
+    fCartAtLastAngleCal[2] = Z();
   }
 }
 
 
 
+void GeoidModel::Vector::setEastingNorthingFromLonLat() const {
+
+  if(fLongitude != fLonLatAtLastEastNorthCalc[0] ||
+     fLatitude != fLonLatAtLastEastNorthCalc[1]){
+
+    fLonLatAtLastEastNorthCalc[0] = Longitude();
+    fLonLatAtLastEastNorthCalc[1] = Latitude();
+    
+    RampdemReader::LonLatToEastingNorthing(fLonLatAtLastEastNorthCalc[0],
+					   fLonLatAtLastEastNorthCalc[1],
+					   fEasting, fNorthing);
+    
+  }
+}

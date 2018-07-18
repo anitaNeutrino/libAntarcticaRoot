@@ -36,23 +36,23 @@ static const VecVec& getDataIfNeeded(RampdemReader::dataSet dataSet);
 // Conversion equations from ftp://164.214.2.65/pub/gig/tm8358.2/TM8358_2.pdf
 
 // scale factor at pole corresponding to 71 deg S latitude of true scale (used in both BEDMAP and RAMP DEM)
-static double scale_factor=0.97276901289;
+static constexpr double scale_factor=0.97276901289;
 
-static double ellipsoid_inv_f = 298.257223563; //of Earth
+static constexpr double ellipsoid_inv_f = 1./GeoidModel::FLATTENING_FACTOR;
 
-// static double ellipsoid_b = R_EARTH*(1-(1/ellipsoid_inv_f)); // Unused.
+// static constexpr double ellipsoid_b = R_EARTH*(1-(1/ellipsoid_inv_f)); // Unused.
 
-static double eccentricity = sqrt((1/ellipsoid_inv_f)*(2-(1/ellipsoid_inv_f)));
+static const double eccentricity = sqrt((1/ellipsoid_inv_f)*(2-(1/ellipsoid_inv_f)));
 
-static double a_bar = pow(eccentricity,2)/2 + 5*pow(eccentricity,4)/24 + pow(eccentricity,6)/12 + 13*pow(eccentricity,8)/360;
+static const double a_bar = pow(eccentricity,2)/2 + 5*pow(eccentricity,4)/24 + pow(eccentricity,6)/12 + 13*pow(eccentricity,8)/360;
 
-static double b_bar = 7*pow(eccentricity,4)/48 + 29*pow(eccentricity,6)/240 + 811*pow(eccentricity,8)/11520;
+static const double b_bar = 7*pow(eccentricity,4)/48 + 29*pow(eccentricity,6)/240 + 811*pow(eccentricity,8)/11520;
 
-static double c_bar = 7*pow(eccentricity,6)/120 + 81*pow(eccentricity,8)/1120;
+static const double c_bar = 7*pow(eccentricity,6)/120 + 81*pow(eccentricity,8)/1120;
 
-static double d_bar = 4279*pow(eccentricity,8)/161280;
+static const double d_bar = 4279*pow(eccentricity,8)/161280;
 
-static double c_0 = (2*GeoidModel::R_EARTH / sqrt(1-pow(eccentricity,2))) * pow(( (1-eccentricity) / (1+eccentricity) ),eccentricity/2);
+static const double c_0 = (2*GeoidModel::R_EARTH / sqrt(1-pow(eccentricity,2))) * pow(( (1-eccentricity) / (1+eccentricity) ),eccentricity/2);
 
 // Varies with latitude, defined here for 71 deg S...
 // static double R_factor = scale_factor*c_0 * pow(( (1 + eccentricity*sin(71*TMath::RadToDeg())) / (1 - eccentricity*sin(71*TMath::RadToDeg())) ),eccentricity/2) * tan((TMath::Pi()/4) - (71*TMath::RadToDeg())/2);
