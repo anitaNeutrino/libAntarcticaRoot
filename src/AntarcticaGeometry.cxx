@@ -90,16 +90,6 @@ static const double binv = 1./6356752.31424518;
 static const double e = sqrt((a*a-b*b)/(a*a)); 
 static const double ep = e * a/b; 
 
-//these are copied and pasted from RampdemReader, there may be some redundancy with other constants but oh well 
-static const double scale_factor=0.97276901289;
-static const double ellipsoid_inv_f = 298.257223563; 
-static const double eccentricity = sqrt((1/ellipsoid_inv_f)*(2-(1/ellipsoid_inv_f)));
-static const double c_0 = (2*GeoidModel::R_EARTH / sqrt(1-pow(eccentricity,2))) * pow(( (1-eccentricity) / (1+eccentricity) ),eccentricity/2);
-static const double a_bar = pow(eccentricity,2)/2 + 5*pow(eccentricity,4)/24 + pow(eccentricity,6)/12 + 13*pow(eccentricity,8)/360;
-static const double b_bar = 7*pow(eccentricity,4)/48 + 29*pow(eccentricity,6)/240 + 811*pow(eccentricity,8)/11520;
-static const double c_bar = 7*pow(eccentricity,6)/120 + 81*pow(eccentricity,8)/1120;
-static const double d_bar = 4279*pow(eccentricity,8)/161280;
-
 
 static void cart2stereo(double *x, double * y, double *z)
 {
@@ -136,6 +126,7 @@ static void cart2stereo(double *x, double * y, double *z)
 
    ///ok now, we have to go to stereographic. We already reversed the sign of latitude
 
+   using namespace GeoidModel;
    double R = scale_factor * c_0 * pow( (1 + eccentricity * sin_lat ) / (1 - eccentricity * sin_lat), eccentricity/2) ; 
       
    //use some trig identities here... 
@@ -175,7 +166,7 @@ static void stereo2cart(double *x, double *y, double *z)
   // cos(pi/2-x) = sin(x)  , 
   // cos(2x) = (1 - tan^2 x) / (1 + tan^2 x) ,
   // sin(2x) = 2 tan x / ( 1 + tan^2 x) 
- 
+  using namespace GeoidModel; 
   double tan2_factor = H2 /(scale_factor * scale_factor * c_0 * c_0);  
   double sin_iso_lat = (1 - tan2_factor) / (1 + tan2_factor);  
   double cos_iso_lat = 2 * H/(scale_factor * c_0) / (1 + tan2_factor); 

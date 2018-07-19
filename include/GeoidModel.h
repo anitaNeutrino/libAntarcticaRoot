@@ -8,38 +8,75 @@
 /**
  * @namespace GeoidModel
  * @brief Get positions, radii, latitudes, longitudes, and other goodies when modelling the Earth
+ * 
+ * A note on Cartesian coordinates: We don't use WGS84 convention!
+ * 
+ * The cartesian coordinate system in WGS84 has:
+ * The origin at the center of mass of the Earth.
+ * The +ve z-axis running through the north pole.
+ * The +ve x-axis running through the prime merian (0 longitude) at the equator
+ * The +ve y-axis is picked such that the coordinate system is right handed.
+ *
+ * ANITA and icemc, for historical reasons, does things a little differently.
+ * The origin is in the same place but:
+ * The +ve z-axis runs through the south pole.
+ * Then the x-axis and y-axis are swapped relative to WGS84.
+ * That x/y swap maintains a right handed coordinate system.
+ * i.e. the +ve y-axis comes out of the Earth at the equator at 0 longitude.
+ * The ANITA/icemc coordinate system is still right handed, and has the property
+ * that +ve x-axis aligns with easting, +ve y-axis aligns with northing,
+ * and quantities like elevation are more +ve in z for higher altitude in Antarctica.
+ * Which does make plots of things in Cartesian coordinates a bit easier to look at.
  */
+
 namespace GeoidModel {
 
   /**
-   * Constants
+   * Ellipsoid Constants
    */
   static constexpr double R_EARTH = 6.378137E6;
   static constexpr double GEOID_MAX = 6.378137E6; // parameters of geoid model
   static constexpr double GEOID_MIN = 6.356752E6; // parameters of geoid model
   static constexpr double FLATTENING_FACTOR = (1./298.257223563);
 
-
+  enum class Pole {North,South}; // for chosing solutions for Geoid z as a function of x,y
+  inline int signOfZ(Pole pole){ // See Vector class comments on the coordinate system!
+    switch(pole){
+    case Pole::North: return -1;
+    default:
+    case Pole::South: return 1;
+    }
+  }
 
   inline Double_t getGeoidRadiusAtCosTheta(Double_t cosTheta);
   Double_t getGeoidRadiusAtLatitude(Double_t lat);
   inline Double_t getGeoidRadiusAtTheta(Double_t theta);
-
-
-
   void getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Double_t p[3]);
   void getLatLonAltFromCartesian(const Double_t p[3], Double_t &lat, Double_t &lon, Double_t &alt);
   Double_t getDistanceToCentreOfEarth(Double_t lat);
+ 
+  /**
+   * Variables for conversion between polar stereographic coordinates and lat/lon.
+   * i.e. Easting/Northing from Longitude/Latitude
+   * Conversion equations from ftp://164.214.2.65/pub/gig/tm8358.2/TM8358_2.pdf  
+   */
+  static constexpr double scale_factor=0.97276901289;
+  static constexpr double ellipsoid_inv_f = 1./FLATTENING_FACTOR;
+  static constexpr double ellipsoid_b = R_EARTH*(1-(1/ellipsoid_inv_f));
+  static const double eccentricity = sqrt((1/ellipsoid_inv_f)*(2-(1/ellipsoid_inv_f)));
+  static const double a_bar = pow(eccentricity,2)/2 + 5*pow(eccentricity,4)/24 + pow(eccentricity,6)/12 + 13*pow(eccentricity,8)/360;
+  static const double b_bar = 7*pow(eccentricity,4)/48 + 29*pow(eccentricity,6)/240 + 811*pow(eccentricity,8)/11520;
+  static const double c_bar = 7*pow(eccentricity,6)/120 + 81*pow(eccentricity,8)/1120;
+  static const double d_bar = 4279*pow(eccentricity,8)/161280;
+  static const double c_0 = (2*R_EARTH / sqrt(1-pow(eccentricity,2))) * pow(( (1-eccentricity) / (1+eccentricity) ),eccentricity/2);
 
-
-
-  enum class Pole {North,South}; // for chosing solutions for Geoid z as a function of x,y
-
+  inline void LonLatToEastingNorthing(Double_t lon,Double_t lat,Double_t &easting,Double_t &northing);
+  inline void EastingNorthingToLonLat(Double_t easting,Double_t northing,Double_t &lon,Double_t &lat);
 
   /**
    * @class Vector
    * 
-   * @brief The ultimate method to represent a position a Geoid modelled Earth
+   * @brief The ultimate way to represent a position on the Earth.
    * 
    * Very much in the spirit of https://xkcd.com/927/
    * 
@@ -118,41 +155,6 @@ namespace GeoidModel {
 
 
   private:
-
-    /**
-     * A note on Cartesian coordinates: We don't use WGS84 convention!
-     * 
-     * The cartesian coordinate system in WGS84 has:
-     * The origin at the center of mass of the Earth.
-     * The +ve z-axis running through the north pole.
-     * The +ve x-axis running through the prime merian (0 longitude) at the equator
-     * The +ve y-axis is picked such that the coordinate system is right handed.
-     *
-     * ANITA and icemc, for historical reasons, does things a little differently.
-     * The origin is in the same place but:
-     * The +ve z-axis runs through the south pole.
-     * Then the x-axis and y-axis are swapped relative to WGS84.
-     * That x/y swap maintains a right handed coordinate system.
-     * i.e. the +ve y-axis comes out of the Earth at the equator at 0 longitude.
-     * The ANITA/icemc coordinate system is still right handed, and has the property
-     * that +ve x-axis aligns with easting, +ve y-axis aligns with northing,
-     * and quantities like elevation are more +ve in z for higher altitude in Antarctica.
-     * Which does make plots of things in Cartesian coordinates a bit easier to look at.
-     */
-    inline void swap_wgs84_anita(double& x, double& y, double& z){
-      z = -z;
-      double oldX = x;
-      x = y;
-      y = oldX;
-    }
-
-    inline int signOfZ(Pole pole){
-      switch(pole){
-      case Pole::North: return -1;
-      default:
-      case Pole::South: return 1;
-      }
-    }
 
 
     /**
@@ -365,6 +367,45 @@ namespace GeoidModel {
   }
 
 
+
+  
+
+  
+  /**
+   * Convert longitude and latitude to easting and northing using the geoid model
+   *
+   * @param lon is the longitude in degrees
+   * @param lat is the latitude in degrees
+   * @param easting in meters
+   * @param northing in meters
+   */
+  void LonLatToEastingNorthing(Double_t lon,Double_t lat,Double_t &easting,Double_t &northing){
+    Double_t lon_rad = lon * TMath::DegToRad(); //convert to radians
+    Double_t lat_rad = -lat * TMath::DegToRad();
+    const double R_factor = scale_factor*c_0 * pow(( (1 + eccentricity*sin(lat_rad)) / (1 - eccentricity*sin(lat_rad)) ),eccentricity/2) * tan((TMath::Pi()/4) - lat_rad/2);
+    easting = R_factor * sin(lon_rad);///(x_max-x_min);
+    northing = R_factor * cos(lon_rad);///(y_max-y_min);
+  }
+
+  /**
+   * Convert from easting/northing to longitude and latitude
+   *
+   * @param easting in meters
+   * @param northing in meters
+   * @param lon is the longitude
+   * @param lat is the latitude
+   */
+  void EastingNorthingToLonLat(Double_t easting,Double_t northing,Double_t &lon,Double_t &lat){
+
+    double lon_rad = atan2(easting,northing);
+    lon = lon_rad * TMath::RadToDeg();
+    double R_factor = sqrt(easting*easting+northing*northing);
+    double isometric_lat = (TMath::Pi()/2) - 2*atan(R_factor/(scale_factor*c_0));
+    lat = isometric_lat + a_bar*sin(2*isometric_lat) + b_bar*sin(4*isometric_lat) + c_bar*sin(6*isometric_lat) + d_bar*sin(8*isometric_lat);
+    lat =  -lat*TMath::RadToDeg(); //convert to degrees, with -90 degrees at the south pole
+    return;
+  }
+  
 
   
 }

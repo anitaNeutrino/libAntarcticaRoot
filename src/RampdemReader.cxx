@@ -9,7 +9,7 @@
 #include "TProfile2D.h"
 #include "TGaxis.h"
 #include "TStyle.h"
-#include "TColor.h"
+
 
 // Typedefs for parsing the surface data
 typedef std::vector<std::vector<short> > VecVec;
@@ -31,52 +31,7 @@ static HeaderMap cellSizes;
 static const VecVec& getDataIfNeeded(RampdemReader::dataSet dataSet);
 
 
-
-//Variables for conversion between polar stereographic coordinates and lat/lon.
-// Conversion equations from ftp://164.214.2.65/pub/gig/tm8358.2/TM8358_2.pdf
-
-// scale factor at pole corresponding to 71 deg S latitude of true scale (used in both BEDMAP and RAMP DEM)
-static constexpr double scale_factor=0.97276901289;
-
-static constexpr double ellipsoid_inv_f = 1./GeoidModel::FLATTENING_FACTOR;
-
-// static constexpr double ellipsoid_b = R_EARTH*(1-(1/ellipsoid_inv_f)); // Unused.
-
-static const double eccentricity = sqrt((1/ellipsoid_inv_f)*(2-(1/ellipsoid_inv_f)));
-
-static const double a_bar = pow(eccentricity,2)/2 + 5*pow(eccentricity,4)/24 + pow(eccentricity,6)/12 + 13*pow(eccentricity,8)/360;
-
-static const double b_bar = 7*pow(eccentricity,4)/48 + 29*pow(eccentricity,6)/240 + 811*pow(eccentricity,8)/11520;
-
-static const double c_bar = 7*pow(eccentricity,6)/120 + 81*pow(eccentricity,8)/1120;
-
-static const double d_bar = 4279*pow(eccentricity,8)/161280;
-
-static const double c_0 = (2*GeoidModel::R_EARTH / sqrt(1-pow(eccentricity,2))) * pow(( (1-eccentricity) / (1+eccentricity) ),eccentricity/2);
-
-// Varies with latitude, defined here for 71 deg S...
-// static double R_factor = scale_factor*c_0 * pow(( (1 + eccentricity*sin(71*TMath::RadToDeg())) / (1 - eccentricity*sin(71*TMath::RadToDeg())) ),eccentricity/2) * tan((TMath::Pi()/4) - (71*TMath::RadToDeg())/2);
-
-// static double nu_factor = R_factor / cos(71*TMath::RadToDeg());
-
-
-
-
 RampdemReader*  RampdemReader::fgInstance = 0; //!< Pointer to instance.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -512,29 +467,6 @@ void RampdemReader::EastingNorthingToEN(Double_t easting,Double_t northing,Int_t
 
 
 
-/**
- * Convert longitude and latitude to easting and northing using the geoid model
- *
- * @param lon is the longitude in degrees
- * @param lat is the latitude in degrees
- * @param easting in meters
- * @param northing in meters
- */
-void RampdemReader::LonLatToEastingNorthing(Double_t lon,Double_t lat,Double_t &easting,Double_t &northing){
-
-  Double_t lon_rad = lon * TMath::DegToRad(); //convert to radians
-  Double_t lat_rad = -lat * TMath::DegToRad();
-
-  const double R_factor = scale_factor*c_0 * pow(( (1 + eccentricity*sin(lat_rad)) / (1 - eccentricity*sin(lat_rad)) ),eccentricity/2) * tan((TMath::Pi()/4) - lat_rad/2);
-
-  easting = R_factor * sin(lon_rad);///(x_max-x_min);
-  northing = R_factor * cos(lon_rad);///(y_max-y_min);
-
-}
-
-
-
-
 
 /**
  * Takes as input the indicies from a BEDMAP data set, and turns them into latitude and longitude coordinates.
@@ -585,6 +517,7 @@ void RampdemReader::ENtoLonLat(Int_t e_coord, Int_t n_coord, Double_t& lon, Doub
     return;
   } //else
 
+  using namespace GeoidModel;
   isometric_lat = (TMath::Pi()/2) - 2*atan(R_factor/(scale_factor*c_0));
 
   lat = isometric_lat + a_bar*sin(2*isometric_lat) + b_bar*sin(4*isometric_lat) + c_bar*sin(6*isometric_lat) + d_bar*sin(8*isometric_lat);
@@ -599,24 +532,6 @@ void RampdemReader::ENtoLonLat(Int_t e_coord, Int_t n_coord, Double_t& lon, Doub
 
 
 
-/**
- * Convert from easting/northing to longitude and latitude
- *
- * @param easting in meters
- * @param northing in meters
- * @param lon is the longitude
- * @param lat is the latitude
- */
-void RampdemReader::EastingNorthingToLonLat(Double_t easting,Double_t northing,Double_t &lon,Double_t &lat){
-
-  double lon_rad = atan2(easting,northing); 
-  lon = lon_rad * TMath::RadToDeg(); 
-  double R_factor = sqrt(easting*easting+northing*northing); 
-  double isometric_lat = (TMath::Pi()/2) - 2*atan(R_factor/(scale_factor*c_0));
-  lat = isometric_lat + a_bar*sin(2*isometric_lat) + b_bar*sin(4*isometric_lat) + c_bar*sin(6*isometric_lat) + d_bar*sin(8*isometric_lat);
-  lat =  -lat*TMath::RadToDeg(); //convert to degrees, with -90 degrees at the south pole
-  return;
-}
 
 
 

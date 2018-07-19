@@ -1,31 +1,7 @@
 #include "GeoidModel.h"
 #include "TMath.h"
-#include "RampdemReader.h"
 #include <iostream>
 
-
-inline void convert_cartesian_coordinates_between_wgs84_and_anita_conventions(double& x, double& y, double& z){
-  // The cartesian coordinate system in WGS84 has:
-  // The origin at the center of mass of the Earth.
-  // The +ve z-axis running through the north pole.
-  // The +ve x-axis running through the prime merian (0 longitude) at the equator
-  // The +ve y-axis is picked such that the coordinate system is right handed.
-
-  // ANITA, for historical reasons, does things a little differently.
-  // The +ve z-axis runs through the south pole.
-  // Then the x and y axes are swapped, which maintains a right handed coordinate system
-  // So, the +ve y-axis comes out of the Earth at the equator at 0 longitude.
-  // This does have the nice property that it's still right handed,
-  // the +ve x aligns with easting, +ve y aligns with northing,
-  // and quantities like elevation have more +ve z for higher altitude in Antarctica.
-
-  // Still, it's a bit confusing, but we're well over a decade in now...
-
-  z = -z;
-  double oldX = x;
-  x = y;
-  y = oldX;
-}
 
 
 void GeoidModel::getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Double_t p[3]){
@@ -37,22 +13,23 @@ void GeoidModel::getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Do
 
   Double_t C2 = pow(TMath::Cos(lat)*TMath::Cos(lat)+(1-FLATTENING_FACTOR)*(1-FLATTENING_FACTOR)*TMath::Sin(lat)*TMath::Sin(lat),-0.5);
   Double_t Q2 = (1-FLATTENING_FACTOR)*(1-FLATTENING_FACTOR)*C2;
-  p[0]=(R_EARTH*C2+alt)*TMath::Cos(lat)*TMath::Cos(lon);
-  p[1]=(R_EARTH*C2+alt)*TMath::Cos(lat)*TMath::Sin(lon);
-  p[2]=(R_EARTH*Q2+alt)*TMath::Sin(lat);
 
-  convert_cartesian_coordinates_between_wgs84_and_anita_conventions(p[0], p[1],  p[2]);
+  // Swapping x/y and inverting z
+  p[1]=(R_EARTH*C2+alt)*TMath::Cos(lat)*TMath::Cos(lon);
+  p[0]=(R_EARTH*C2+alt)*TMath::Cos(lat)*TMath::Sin(lon);
+  p[2]=-(R_EARTH*Q2+alt)*TMath::Sin(lat);
+
 }
 
 void GeoidModel::getLatLonAltFromCartesian(const Double_t p[3], Double_t &lat, Double_t &lon, Double_t &alt){
 
 
-  // see page 71 onwards of https://web.archive.org/web/20120118224152/http://mercator.myzen.co.uk/mercator.pdf  
-  Double_t x=p[0];
-  Double_t y=p[1];
-  Double_t z=p[2];
+// swapping x,y and inverting z
+  Double_t x=p[1]; 
+  Double_t y=p[0];
+  Double_t z=-p[2];
 
-  convert_cartesian_coordinates_between_wgs84_and_anita_conventions(x, y, z);  
+  // see page 71 onwards of https://web.archive.org/web/20120118224152/http://mercator.myzen.co.uk/mercator.pdf  
 
   static Double_t cosaeSq=(1-FLATTENING_FACTOR)*(1-FLATTENING_FACTOR);
   
@@ -154,9 +131,9 @@ void GeoidModel::Vector::updateEastingNorthingFromLonLat() const {
     fLonLatAtLastEastNorthCalc[0] = Longitude();
     fLonLatAtLastEastNorthCalc[1] = Latitude();
     
-    RampdemReader::LonLatToEastingNorthing(fLonLatAtLastEastNorthCalc[0],
-					   fLonLatAtLastEastNorthCalc[1],
-					   fEasting, fNorthing);
+    LonLatToEastingNorthing(fLonLatAtLastEastNorthCalc[0],
+			    fLonLatAtLastEastNorthCalc[1],
+			    fEasting, fNorthing);
     
   }
 }
@@ -169,6 +146,6 @@ void GeoidModel::Vector::updateLonLatFromEastingNorthing(bool mustRecalcuateAlti
   double lon, lat;
   double alt = mustRecalcuateAltitudeFirst ? Altitude() : fAltitude;
   
-  RampdemReader::EastingNorthingToLonLat(fEasting, fNorthing, lon, lat);
+  EastingNorthingToLonLat(fEasting, fNorthing, lon, lat);
   SetLonLatAlt(lon, lat, alt);
 }

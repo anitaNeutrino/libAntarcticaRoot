@@ -14,6 +14,7 @@
 #include "TObject.h"
 #include "TMath.h"
 #include "TProfile2D.h"
+#include "GeoidModel.h"
 #include "TGaxis.h"
 #include <vector>
 #include <map>
@@ -68,10 +69,17 @@ public:
   static void EastingNorthingToEN(Double_t easting, Double_t northing, Int_t &e_coord, Int_t &n_coord,
 				  RampdemReader::dataSet=rampdem);
 
-  static void LonLatToEastingNorthing(Double_t lon, Double_t lat, Double_t &easting, Double_t &northing);
 
 
-  static void EastingNorthingToLonLat(Double_t easting, Double_t northing, Double_t &lon, Double_t &lat);
+  // For backwards compatibility
+  inline static void LonLatToEastingNorthing(Double_t lon, Double_t lat, Double_t &easting, Double_t &northing){
+    GeoidModel::LonLatToEastingNorthing(lon, lat, easting, northing); //
+  }
+  // For backwards compatibility
+  inline static void EastingNorthingToLonLat(Double_t easting, Double_t northing, Double_t &lon, Double_t &lat){
+    GeoidModel::EastingNorthingToLonLat(easting, northing, lon, lat);
+  }
+
 
   static Bool_t isOnContinent(Double_t lon, Double_t lat);
   static Bool_t isOnIceShelf(Double_t lon, Double_t lat);
