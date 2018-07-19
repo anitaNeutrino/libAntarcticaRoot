@@ -66,14 +66,14 @@ void GeoidModel::getLatLonAltFromCartesian(const Double_t p[3], Double_t &lat, D
 
 Double_t GeoidModel::getDistanceToCentreOfEarth(Double_t lat)
 {
-  Vector v;
+  Position v;
   v.SetLonLatAlt(0, lat, 0);
   return v.Mag();
 }
 
 
 Double_t GeoidModel::getGeoidRadiusAtLatitude(Double_t latitude) {
-  Vector v;
+  Position v;
   v.SetLonLatAlt(0, latitude, 0);
   return getGeoidRadiusAtCosTheta(v.CosTheta());
 }
@@ -83,7 +83,7 @@ Double_t GeoidModel::getGeoidRadiusAtLatitude(Double_t latitude) {
 
 
 
-void GeoidModel::Vector::updateCartesianFromGeoid() {
+void GeoidModel::Position::updateCartesianFromGeoid() {
   // always called after any lon/lat/alt has been updated
   GeoidModel::getCartesianCoords(fLatitude, fLongitude, fAltitude, fCartAtLastGeoidCalc);
   SetXYZ(fCartAtLastGeoidCalc[0], fCartAtLastGeoidCalc[1], fCartAtLastGeoidCalc[2]);
@@ -91,7 +91,7 @@ void GeoidModel::Vector::updateCartesianFromGeoid() {
 
 
 
-void GeoidModel::Vector::updateGeoidFromCartesian() const {
+void GeoidModel::Position::updateGeoidFromCartesian() const {
   // called when Longitude(), Latitude(), Altitude() is requested
   if(X() != fCartAtLastGeoidCalc[0] ||
      Y() != fCartAtLastGeoidCalc[1] ||
@@ -103,7 +103,7 @@ void GeoidModel::Vector::updateGeoidFromCartesian() const {
 }
 
 
-void GeoidModel::Vector::updateAnglesFromCartesian() const {
+void GeoidModel::Position::updateAnglesFromCartesian() const {
 
   bool xDirty = X() != fCartAtLastAngleCal[0];
   bool yDirty = Y() != fCartAtLastAngleCal[1];
@@ -123,7 +123,7 @@ void GeoidModel::Vector::updateAnglesFromCartesian() const {
 
 
 
-void GeoidModel::Vector::updateEastingNorthingFromLonLat() const {
+void GeoidModel::Position::updateEastingNorthingFromLonLat() const {
 
   if(fLongitude != fLonLatAtLastEastNorthCalc[0] ||
      fLatitude != fLonLatAtLastEastNorthCalc[1]){
@@ -139,7 +139,7 @@ void GeoidModel::Vector::updateEastingNorthingFromLonLat() const {
 }
 
 
-void GeoidModel::Vector::updateLonLatFromEastingNorthing(bool mustRecalcuateAltitudeFirst) {
+void GeoidModel::Position::updateLonLatFromEastingNorthing(bool mustRecalcuateAltitudeFirst) {
   // Since we are going to eventually update cartesian from lon/lat/alt
   // we must make sure altitude is up to date...
   //

@@ -40,7 +40,7 @@ namespace GeoidModel {
   static constexpr double FLATTENING_FACTOR = (1./298.257223563);
 
   enum class Pole {North,South}; // for chosing solutions for Geoid z as a function of x,y
-  inline int signOfZ(Pole pole){ // See Vector class comments on the coordinate system!
+  inline int signOfZ(Pole pole){ // See Position class comments on the coordinate system!
     switch(pole){
     case Pole::North: return -1;
     default:
@@ -74,35 +74,35 @@ namespace GeoidModel {
   inline void EastingNorthingToLonLat(Double_t easting,Double_t northing,Double_t &lon,Double_t &lat);
 
   /**
-   * @class Vector
+   * @class Position
    * 
    * @brief The ultimate way to represent a position on the Earth.
    * 
    * Very much in the spirit of https://xkcd.com/927/
    * 
-   * This class is supposed to combine the best features of a TVector, an icemc::Vector, 
+   * This class is supposed to combine the best features of a TVector, an icemc::Position, 
    * and the proper GeoidModel transformations.
    * 
    * Features:
    * Lazy, behind the scenes conversion of x,y,z to lon, lat, alt, easting, northing
    * 
    */
-  class Vector : public TVector3 {
+  class Position : public TVector3 {
 
   public:
 
-    Vector(Double_t x=0, Double_t y=0) : TVector3(x, y, 0) {
+    Position(Double_t x=0, Double_t y=0) : TVector3(x, y, 0) {
       moveToGeoidZ();
     }
-    Vector(Pole pole) : TVector3(0, 0, 0) {
+    Position(Pole pole) : TVector3(0, 0, 0) {
       moveToGeoidZ(pole);
     }
 
-    Vector(Double_t x, Double_t y, Double_t z) : TVector3(x, y, z) {};
-    Vector(TVector3& v) : TVector3(v) {};
+    Position(Double_t x, Double_t y, Double_t z) : TVector3(x, y, z) {};
+    Position(const TVector3& v) : TVector3(v) {};
 
-    template <class T> Vector(const T& t);
-    template <class T> Vector(const T* t);
+    template <class T> Position(const T& t);
+    template <class T> Position(const T* t);
 
     /**
      * Longitude/Latitude/Altitude Getter functions
@@ -152,7 +152,7 @@ namespace GeoidModel {
 
 
 
-
+    inline Double_t Distance(const Position& p2) const;
 
   private:
 
@@ -221,52 +221,52 @@ namespace GeoidModel {
 
 
 
-  template <class T> Vector::Vector(const T& t){
+  template <class T> Position::Position(const T& t){
     SetLonLatAlt(t.longitude,  t.latitude, t.altitude);
     updateCartesianFromGeoid();
   };
 
-  template <class T> Vector::Vector(const T* t) : Vector(*t){;}
+  template <class T> Position::Position(const T* t) : Position(*t){;}
 
 
-  inline void Vector::SetLongitude(double lon) {
+  inline void Position::SetLongitude(double lon) {
     if(lon > 180){
       lon -= 360;
     }
     fLongitude = lon;
     updateCartesianFromGeoid();
   }
-  inline void Vector::SetLatitude(double lat){
+  inline void Position::SetLatitude(double lat){
     fLatitude = lat;
     updateCartesianFromGeoid();
   }
-  inline void Vector::SetAltitude(double alt) {
+  inline void Position::SetAltitude(double alt) {
     fAltitude = alt;
     updateCartesianFromGeoid();
   }
-  inline void Vector::SetLonLatAlt(double lon, double lat, double alt) {
+  inline void Position::SetLonLatAlt(double lon, double lat, double alt) {
     fLatitude = lat;
     fAltitude = alt;
     SetLongitude(lon);
   }
 
 
-  inline void Vector::SetEasting(double easting) {
+  inline void Position::SetEasting(double easting) {
     fNorthing = Northing();
     fEasting = easting;
     updateLonLatFromEastingNorthing(false);
   }
-  inline void Vector::SetNorthing(double northing) {    
+  inline void Position::SetNorthing(double northing) {    
     fEasting = Easting();
     fNorthing = northing;
     updateLonLatFromEastingNorthing(false);
   }
-  inline void Vector::SetEastingNorthing(double easting, double northing) {
+  inline void Position::SetEastingNorthing(double easting, double northing) {
     fEasting = easting;
     fNorthing = northing;
     updateLonLatFromEastingNorthing(true);
   }
-  inline void Vector::SetEastingNorthingAlt(double easting, double northing, double alt) {
+  inline void Position::SetEastingNorthingAlt(double easting, double northing, double alt) {
     fEasting = easting;
     fNorthing = northing;
     fAltitude = alt;
@@ -275,46 +275,46 @@ namespace GeoidModel {
 
 
 
-  inline Double_t Vector::Latitude() const {
+  inline Double_t Position::Latitude() const {
     updateGeoidFromCartesian();
     return fLatitude;
   }
-  inline Double_t Vector::Longitude() const {
+  inline Double_t Position::Longitude() const {
     updateGeoidFromCartesian();
     return fLongitude;
   }
-  inline Double_t Vector::Altitude() const {
+  inline Double_t Position::Altitude() const {
     updateGeoidFromCartesian();
     return fAltitude;
   }
 
-  inline Double_t Vector::Theta() const {
+  inline Double_t Position::Theta() const {
     updateAnglesFromCartesian();
     return fTheta;
   }
-  inline Double_t Vector::Phi() const {
+  inline Double_t Position::Phi() const {
     updateAnglesFromCartesian();
     return fPhi;
   }
 
 
-  inline Double_t Vector::Easting() const {
+  inline Double_t Position::Easting() const {
     updateEastingNorthingFromLonLat();
     return fEasting;
   }
 
-  inline Double_t Vector::Northing() const {
+  inline Double_t Position::Northing() const {
     updateEastingNorthingFromLonLat();
     return fNorthing;
   }
 
-  inline Double_t Vector::GetGeoidRadius() const {
+  inline Double_t Position::GetGeoidRadius() const {
     return getGeoidRadiusAtCosTheta(CosTheta());
   }
 
 
 
-  void Vector::GetLonLatAlt(Double_t& lon, Double_t& lat, Double_t& alt) const {
+  void Position::GetLonLatAlt(Double_t& lon, Double_t& lat, Double_t& alt) const {
     // call functions rather than direct access so cache is updated!
     lon = Longitude();
     lat = Latitude();
@@ -322,19 +322,19 @@ namespace GeoidModel {
   }
 
   template <class T>
-  void Vector::GetLonLatAlt(T& t) const {
+  void Position::GetLonLatAlt(T& t) const {
     GetLonLatAlt(t.longitude,  t.latitude,  t.altitude);
   }
 
   template <class T>
-  void Vector::GetLonLatAlt(T* t) const {
+  void Position::GetLonLatAlt(T* t) const {
     GetLonLatAlt(*t);
   }
 
 
 
 
-  inline double Vector::surfaceZ(Pole pole){
+  inline double Position::surfaceZ(Pole pole){
     // ellipse defined by: p^{2}/(geoid_max^{2}) + z^{2}/(geoid_min^{2}) = 1
     const double pSq = X()*X() + Y()*Y(); //lateral width of the geoid
     const double zSq = GEOID_MIN*GEOID_MIN*(1 - pSq/(GEOID_MAX*GEOID_MAX));
@@ -348,11 +348,13 @@ namespace GeoidModel {
     }
   }
 
-  inline void Vector::moveToGeoidZ(Pole pole){
+  inline void Position::moveToGeoidZ(Pole pole){
     SetZ(surfaceZ(pole));
   }
 
-
+  inline Double_t Position::Distance(const Position& p2) const{
+    return (*this - p2).Mag();
+  }
 
 
 
