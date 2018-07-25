@@ -26,7 +26,7 @@ namespace GeoMagnetic{
 
 
 /** 
- * @class to hold the results of geomagnetic field calculations
+ * @class FieldPoint holds the results of geomagnetic field calculations
  *
  * Since the field components are in a spherical coordinate system, the unit vectors
  * move as a function of position. So here I keep the field result with the position.

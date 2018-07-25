@@ -1,5 +1,5 @@
 #include "AntarcticaGeometry.h" 
-#include "GeoidModel.h" 
+#include "Geoid.h" 
 #include "RampdemReader.h" 
 #include "Adu5Pat.h" 
 #include "FFTtools.h"
@@ -126,7 +126,7 @@ static void cart2stereo(double *x, double * y, double *z)
 
    ///ok now, we have to go to stereographic. We already reversed the sign of latitude
 
-   using namespace GeoidModel;
+   using namespace Geoid;
    double R = scale_factor * c_0 * pow( (1 + eccentricity * sin_lat ) / (1 - eccentricity * sin_lat), eccentricity/2) ; 
       
    //use some trig identities here... 
@@ -166,7 +166,7 @@ static void stereo2cart(double *x, double *y, double *z)
   // cos(pi/2-x) = sin(x)  , 
   // cos(2x) = (1 - tan^2 x) / (1 + tan^2 x) ,
   // sin(2x) = 2 tan x / ( 1 + tan^2 x) 
-  using namespace GeoidModel; 
+  using namespace Geoid; 
   double tan2_factor = H2 /(scale_factor * scale_factor * c_0 * c_0);  
   double sin_iso_lat = (1 - tan2_factor) / (1 + tan2_factor);  
   double cos_iso_lat = 2 * H/(scale_factor * c_0) / (1 + tan2_factor); 
@@ -198,17 +198,17 @@ static void stereo2cart(double *x, double *y, double *z)
 
   //copied and pasted from getCartesianCoords, with a few intermediate values stored
   
-  const double C1 = (1-GeoidModel::FLATTENING_FACTOR) * (1-GeoidModel::FLATTENING_FACTOR); 
+  const double C1 = (1-Geoid::FLATTENING_FACTOR) * (1-Geoid::FLATTENING_FACTOR); 
   
   double C2 = pow(cos_lat * cos_lat + C1 * sin_lat*sin_lat,-0.5);
   double Q2 = C1* C2; 
   
-  double C3 = GeoidModel::R_EARTH * C2 + alt; 
+  double C3 = Geoid::R_EARTH * C2 + alt; 
 
   //same silly convention as before here 
   *x = C3 * cos_lat * sin_lon; 
   *y = C3 * cos_lat * cos_lon; 
-  *z = (GeoidModel::R_EARTH * Q2 + alt) * sin_lat; 
+  *z = (Geoid::R_EARTH * Q2 + alt) * sin_lat; 
 }
 
 
@@ -221,7 +221,7 @@ void AntarcticCoord::convert(CoordType t)
     if (t == CARTESIAN) 
     {
       double cartesian[3]; 
-      GeoidModel::getCartesianCoords(x,y,z, cartesian); 
+      Geoid::getCartesianCoords(x,y,z, cartesian); 
       x = cartesian[0]; 
       y = cartesian[1]; 
       z = cartesian[2]; 
@@ -261,7 +261,7 @@ void AntarcticCoord::convert(CoordType t)
       cartesian[0] = x; 
       cartesian[1] = y; 
       cartesian[2] = z; 
-      GeoidModel::getLatLonAltFromCartesian(cartesian, x,y,z); 
+      Geoid::getLatLonAltFromCartesian(cartesian, x,y,z); 
     }
     else if ( t== STEREOGRAPHIC)
     {
@@ -636,7 +636,7 @@ double AntarcticCoord::surfaceDistance(double lat0 , double lat1, double lon0, d
     nagged_about_surface++; 
     fprintf(stderr,"WARNING: compiled without geographic lib support. Using haversine distance between points\n"); 
   }
-  return 2 * GeoidModel::R_EARTH * asin( hav(lat1-lat0) + cos(lat0) * cos(lat1) * hav(lon1-lon0)); 
+  return 2 * Geoid::R_EARTH * asin( hav(lat1-lat0) + cos(lat0) * cos(lat1) * hav(lon1-lon0)); 
 #else
 
   double distance; 

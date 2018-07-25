@@ -12,16 +12,19 @@
 #include "TF1.h"
 #include "TLegend.h"
 
-#include "GeoidModel.h"
+#include "Geoid.h"
 #include "TGraphAntarctica.h"
 
 #include "TDatime.h"
 #include "TCanvas.h"
 
+
+
+
+
 // --------------------------------------------------------------------------------------------------------------------------------------
 // Silly globals, kept tucked away from prying eyes
 // --------------------------------------------------------------------------------------------------------------------------------------
-
 bool doneInit = false; // Tells you whether we've read in the data and precalculated the factorials
 const int numPoly = 14; // there are only 13 polynomial coeffients, but I'm going to start counting from one for simplicity
 std::vector<double> factorials(2*numPoly, 0);
@@ -30,6 +33,7 @@ std::map<int, std::vector<double> > h_vs_time; // Gauss coefficients (needed to 
 const double earth_radius = 6371.2e3; // earth radius in meters for the magnetic model
 TF1* fAssocLegendre[numPoly][numPoly] = {{NULL}}; // Associated Legendre polynomials
 bool debug = false;
+
 
 // for "differentiating" the potential (really it's a difference with small delta values)
 // I suppose I could differentiate the expression by hand and evaluate that... but that's work
@@ -42,6 +46,9 @@ const double dPhi = 0.01*TMath::DegToRad();
 // from a table in the Wikipedia
 TGraph grAtmosDensity;
 TF1* fExpAtmos;
+
+
+
 
 // --------------------------------------------------------------------------------------------------------------------------------------
 // Utility functions, for initialisation and internal calculation
@@ -58,6 +65,8 @@ TF1* fExpAtmos;
 inline double getIndex(int n, int m){
   return n*numPoly + m;
 }
+
+
 
 /** 
  * Reads in the Gauss coefficients for the associated Legendre polynomials
@@ -105,6 +114,7 @@ void getGaussCoefficients(){
           igrfDataTableStrings.back().push_back(thisS);
         }
       }
+      delete tokens;
     }
   }
 
@@ -178,11 +188,15 @@ void getGaussCoefficients(){
 
 
 
+
+
 /** 
  * Do all the precalculation and initialisation needed to make the namespace useable
  *
  * This involves reading in the coefficients, precalculating the factorials
- * and making the TF1 associated legendre polynomials
+ * and making the TF1 associated legendre polynomials.
+ *
+ * @warning Currently this is not thread safe!
  */
 void prepareGeoMagnetics(){
 
@@ -203,7 +217,7 @@ void prepareGeoMagnetics(){
       }
     }
 
-    const int numAtmospherePoints = 8;    
+    const int numAtmospherePoints = 8;
     double heights[numAtmospherePoints]   = {-611,   11019,  20063,  32162,  47350,  51413, 71802, 86000};
     double densities[numAtmospherePoints] = {1.2985, 0.3639, 0.0880, 0.0132, 0.0020, 0,     0,     0    };
     for(int i=0;  i < numAtmospherePoints; i++){
@@ -234,7 +248,7 @@ void prepareGeoMagnetics(){
  */
 double getFactorial(int i){
   if(i >=  2*numPoly){
-    std::cerr << "Too high factorial requested!" << std::endl;
+    std::cerr << "Too high a factorial requested!" << std::endl;
     return -1;
   }    
   return factorials[i];
@@ -281,7 +295,7 @@ double unixTimeToFractionalYear(UInt_t unixTime){
  */
 void lonLatAltToSpherical(double lon, double lat, double alt, double& r, double& theta, double& phi){
   double cartesian[3];
-  GeoidModel::getCartesianCoords(lat, lon, alt, cartesian);
+  Geoid::getCartesianCoords(lat, lon, alt, cartesian);
   double x = cartesian[0];
   double y = cartesian[1];
   double z = cartesian[2];
@@ -333,7 +347,7 @@ void sphericalToLatLonAlt(double& lon, double& lat, double& alt, double r, doubl
   double z = r*TMath::Cos(theta);
   double cartesian[3] = {x, y, z};
 
-  GeoidModel::getLatLonAltFromCartesian(cartesian, lat, lon, alt);
+  Geoid::getLatLonAltFromCartesian(cartesian, lat, lon, alt);
 }
 
 
@@ -770,11 +784,12 @@ GeoMagnetic::FieldPoint::FieldPoint(UInt_t unixTime, double lon, double lat, dou
  * Everything difficult regarding coordinate transformations with the field is in here
  */
 void GeoMagnetic::FieldPoint::calculateFieldAtPosition(){
-  // each of these functions calcuates calculates V0, so you could save 2 of 6 calculations here...
+
   double r = fPosition.Mag();
   double theta = fPosition.Theta();
   double phi = fPosition.Phi();
-  
+
+  // each of these functions calcuates calculates V0, so you could save 2 of 6 calculations here...  
   double X = X_atSpherical(fUnixTime, r,  theta, phi); // north
   double Y = Y_atSpherical(fUnixTime, r,  theta, phi); // east
   double Z = Z_atSpherical(fUnixTime, r,  theta, phi); // down

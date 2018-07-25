@@ -1,10 +1,10 @@
-#include "GeoidModel.h"
+#include "Geoid.h"
 #include "TMath.h"
 #include <iostream>
 
 
 
-void GeoidModel::getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Double_t p[3]){
+void Geoid::getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Double_t p[3]){
 
   // see page 71 onwards of https://web.archive.org/web/20120118224152/http://mercator.myzen.co.uk/mercator.pdf  
   lat *= TMath::DegToRad();
@@ -21,7 +21,7 @@ void GeoidModel::getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Do
 
 }
 
-void GeoidModel::getLatLonAltFromCartesian(const Double_t p[3], Double_t &lat, Double_t &lon, Double_t &alt){
+void Geoid::getLatLonAltFromCartesian(const Double_t p[3], Double_t &lat, Double_t &lon, Double_t &alt){
 
 
 // swapping x,y and inverting z
@@ -64,7 +64,7 @@ void GeoidModel::getLatLonAltFromCartesian(const Double_t p[3], Double_t &lat, D
 
 
 
-Double_t GeoidModel::getDistanceToCentreOfEarth(Double_t lat)
+Double_t Geoid::getDistanceToCentreOfEarth(Double_t lat)
 {
   Position v;
   v.SetLonLatAlt(0, lat, 0);
@@ -72,7 +72,7 @@ Double_t GeoidModel::getDistanceToCentreOfEarth(Double_t lat)
 }
 
 
-Double_t GeoidModel::getGeoidRadiusAtLatitude(Double_t latitude) {
+Double_t Geoid::getGeoidRadiusAtLatitude(Double_t latitude) {
   Position v;
   v.SetLonLatAlt(0, latitude, 0);
   return getGeoidRadiusAtCosTheta(v.CosTheta());
@@ -83,27 +83,27 @@ Double_t GeoidModel::getGeoidRadiusAtLatitude(Double_t latitude) {
 
 
 
-void GeoidModel::Position::updateCartesianFromGeoid() {
+void Geoid::Position::updateCartesianFromGeoid() {
   // always called after any lon/lat/alt has been updated
-  GeoidModel::getCartesianCoords(fLatitude, fLongitude, fAltitude, fCartAtLastGeoidCalc);
+  Geoid::getCartesianCoords(fLatitude, fLongitude, fAltitude, fCartAtLastGeoidCalc);
   SetXYZ(fCartAtLastGeoidCalc[0], fCartAtLastGeoidCalc[1], fCartAtLastGeoidCalc[2]);
 }
 
 
 
-void GeoidModel::Position::updateGeoidFromCartesian() const {
+void Geoid::Position::updateGeoidFromCartesian() const {
   // called when Longitude(), Latitude(), Altitude() is requested
   if(X() != fCartAtLastGeoidCalc[0] ||
      Y() != fCartAtLastGeoidCalc[1] ||
      Z() != fCartAtLastGeoidCalc[2]){
     // Then we've moved, so must recalculate lon, lat alt;
     GetXYZ(fCartAtLastGeoidCalc);
-    GeoidModel::getLatLonAltFromCartesian(fCartAtLastGeoidCalc, fLatitude, fLongitude, fAltitude);
+    Geoid::getLatLonAltFromCartesian(fCartAtLastGeoidCalc, fLatitude, fLongitude, fAltitude);
   }  
 }
 
 
-void GeoidModel::Position::updateAnglesFromCartesian() const {
+void Geoid::Position::updateAnglesFromCartesian() const {
 
   bool xDirty = X() != fCartAtLastAngleCal[0];
   bool yDirty = Y() != fCartAtLastAngleCal[1];
@@ -123,7 +123,7 @@ void GeoidModel::Position::updateAnglesFromCartesian() const {
 
 
 
-void GeoidModel::Position::updateEastingNorthingFromLonLat() const {
+void Geoid::Position::updateEastingNorthingFromLonLat() const {
 
   if(fLongitude != fLonLatAtLastEastNorthCalc[0] ||
      fLatitude != fLonLatAtLastEastNorthCalc[1]){
@@ -139,7 +139,7 @@ void GeoidModel::Position::updateEastingNorthingFromLonLat() const {
 }
 
 
-void GeoidModel::Position::updateLonLatFromEastingNorthing(bool mustRecalcuateAltitudeFirst) {
+void Geoid::Position::updateLonLatFromEastingNorthing(bool mustRecalcuateAltitudeFirst) {
   // Since we are going to eventually update cartesian from lon/lat/alt
   // we must make sure altitude is up to date...
   //

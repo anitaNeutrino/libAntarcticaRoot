@@ -14,7 +14,7 @@
 #include "TObject.h"
 #include "TMath.h"
 #include "TProfile2D.h"
-#include "GeoidModel.h"
+#include "Geoid.h"
 #include "TGaxis.h"
 #include <vector>
 #include <map>
@@ -73,11 +73,11 @@ public:
 
   // For backwards compatibility
   inline static void LonLatToEastingNorthing(Double_t lon, Double_t lat, Double_t &easting, Double_t &northing){
-    GeoidModel::LonLatToEastingNorthing(lon, lat, easting, northing); //
+    Geoid::LonLatToEastingNorthing(lon, lat, easting, northing); //
   }
   // For backwards compatibility
   inline static void EastingNorthingToLonLat(Double_t easting, Double_t northing, Double_t &lon, Double_t &lat){
-    GeoidModel::EastingNorthingToLonLat(easting, northing, lon, lat);
+    Geoid::EastingNorthingToLonLat(easting, northing, lon, lat);
   }
 
 

@@ -5,7 +5,7 @@
 #include <cstring>
 #include "TMath.h"
 #include "RampdemReader.h"
-#include "GeoidModel.h"
+#include "Geoid.h"
 #include "TProfile2D.h"
 #include "TGaxis.h"
 #include "TStyle.h"
@@ -250,7 +250,7 @@ Double_t RampdemReader::SurfaceAboveGeoidEN(Double_t Easting, Double_t Northing,
  * @return the height of the geoid in metres
  */
 Double_t RampdemReader::Geoid(Double_t latitude) {
-  using namespace GeoidModel;
+  using namespace Geoid;
   return (GEOID_MIN*GEOID_MAX/sqrt(pow(GEOID_MIN,2)-(pow(GEOID_MIN,2)-pow(GEOID_MAX,2))*pow(cos(latitude*TMath::DegToRad()),2)));
 }
 
@@ -517,7 +517,7 @@ void RampdemReader::ENtoLonLat(Int_t e_coord, Int_t n_coord, Double_t& lon, Doub
     return;
   } //else
 
-  using namespace GeoidModel;
+  using namespace Geoid;
   isometric_lat = (TMath::Pi()/2) - 2*atan(R_factor/(scale_factor*c_0));
 
   lat = isometric_lat + a_bar*sin(2*isometric_lat) + b_bar*sin(4*isometric_lat) + c_bar*sin(6*isometric_lat) + d_bar*sin(8*isometric_lat);

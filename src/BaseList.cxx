@@ -7,7 +7,7 @@
 #include <unistd.h> 
 #include "TROOT.h" 
 #include "TKey.h" 
-#include "GeoidModel.h"
+#include "Geoid.h"
 
 #include "TMarker.h" 
 #include "TText.h" 
@@ -332,14 +332,14 @@ AntarcticCoord BaseList::path::getPosition(unsigned t) const {
   //  The unit auxiliary sphere is assuming (x / a)^2 + (y / a)^2 + (z / b)^2 = 1.
   //  See (https://www.uwgb.edu/dutchs/structge/sphproj.htm) and (http://mathworld.wolfram.com/StereographicProjection.html) for details.
   TVector3 g = low_frac * std::abs(1 / cu.z) * cu.v() + (1 - low_frac) * std::abs(1 / cl.z) * cl.v();
-  g(0) *= GeoidModel::GEOID_MIN / GeoidModel::GEOID_MAX;  //  GEOID_MIN and GEOID_MAX defined in "AnitaGeomTool.h".
-  g(1) *= GeoidModel::GEOID_MIN / GeoidModel::GEOID_MAX;
+  g(0) *= Geoid::GEOID_MIN / Geoid::GEOID_MAX;  //  GEOID_MIN and GEOID_MAX defined in "AnitaGeomTool.h".
+  g(1) *= Geoid::GEOID_MIN / Geoid::GEOID_MAX;
 
   //  Now to invert the transform, back to Cartesian ((x, y, z) = (1 / R) * (a * X, a * Y, b * Z), R = sqrt(X^2 + Y^2 + Z^2)).
   AntarcticCoord c = AntarcticCoord(g.Unit());
-  c.x *= GeoidModel::GEOID_MAX;
-  c.y *= GeoidModel::GEOID_MAX;
-  c.z *= GeoidModel::GEOID_MIN;
+  c.x *= Geoid::GEOID_MAX;
+  c.y *= Geoid::GEOID_MAX;
+  c.z *= Geoid::GEOID_MIN;
 
   //  Return this Cartesian vector back in stereographic.
   if (clz == gndl && cuz == gndu) {

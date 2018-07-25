@@ -6,10 +6,10 @@
 #include <iostream>
 
 /**
- * @namespace GeoidModel
+ * @namespace Geoid
  * @brief Get positions, radii, latitudes, longitudes, and other goodies when modelling the Earth
  * 
- * A note on Cartesian coordinates: We don't use WGS84 convention!
+ * A note on Cartesian coordinates: We don't use the WGS84 convention!
  * 
  * The cartesian coordinate system in WGS84 has:
  * The origin at the center of mass of the Earth.
@@ -17,36 +17,45 @@
  * The +ve x-axis running through the prime merian (0 longitude) at the equator
  * The +ve y-axis is picked such that the coordinate system is right handed.
  *
- * ANITA and icemc, for historical reasons, does things a little differently.
+ * ANITA and icemc, for historical reasons, do things a little differently.
  * The origin is in the same place but:
- * The +ve z-axis runs through the south pole.
+ * The +ve z-axis runs through the SOUTH pole.
  * Then the x-axis and y-axis are swapped relative to WGS84.
  * That x/y swap maintains a right handed coordinate system.
+ * 
  * i.e. the +ve y-axis comes out of the Earth at the equator at 0 longitude.
  * The ANITA/icemc coordinate system is still right handed, and has the property
  * that +ve x-axis aligns with easting, +ve y-axis aligns with northing,
  * and quantities like elevation are more +ve in z for higher altitude in Antarctica.
- * Which does make plots of things in Cartesian coordinates a bit easier to look at.
+ * I suppose it does make Cartesian plots of Antarctica a bit easier to look at.
  */
-
-namespace GeoidModel {
+namespace Geoid {
 
   /**
    * Ellipsoid Constants
    */
-  static constexpr double R_EARTH = 6.378137E6;
+  static constexpr double R_EARTH =   6.378137E6;
   static constexpr double GEOID_MAX = 6.378137E6; // parameters of geoid model
   static constexpr double GEOID_MIN = 6.356752E6; // parameters of geoid model
   static constexpr double FLATTENING_FACTOR = (1./298.257223563);
 
-  enum class Pole {North,South}; // for chosing solutions for Geoid z as a function of x,y
-  inline int signOfZ(Pole pole){ // See Position class comments on the coordinate system!
+
+
+  enum class Pole {North,South}; // for choosing solutions for Geoid z as a function of x,y
+  inline int signOfZ(Pole pole){ // See namespace comments on the coordinate system for context
     switch(pole){
     case Pole::North: return -1;
     default:
     case Pole::South: return 1;
     }
   }
+  inline Pole getPole(double z){ // See namespace comments on the coordinate system for context
+    Pole p = z >= 0 ? Pole::South : Pole::North;
+    return p;
+  }
+
+
+  
 
   inline Double_t getGeoidRadiusAtCosTheta(Double_t cosTheta);
   Double_t getGeoidRadiusAtLatitude(Double_t lat);
@@ -54,7 +63,11 @@ namespace GeoidModel {
   void getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Double_t p[3]);
   void getLatLonAltFromCartesian(const Double_t p[3], Double_t &lat, Double_t &lon, Double_t &alt);
   Double_t getDistanceToCentreOfEarth(Double_t lat);
- 
+
+
+
+
+  
   /**
    * Variables for conversion between polar stereographic coordinates and lat/lon.
    * i.e. Easting/Northing from Longitude/Latitude
@@ -81,7 +94,7 @@ namespace GeoidModel {
    * Very much in the spirit of https://xkcd.com/927/
    * 
    * This class is supposed to combine the best features of a TVector, an icemc::Position, 
-   * and the proper GeoidModel transformations.
+   * and the proper Geoid transformations.
    * 
    * Features:
    * Lazy, behind the scenes conversion of x,y,z to lon, lat, alt, easting, northing
@@ -113,7 +126,7 @@ namespace GeoidModel {
     inline Double_t Easting() const;
     inline Double_t Northing() const;
 
-    Double_t GetGeoidRadius() const;
+    Double_t Surface() const;
     inline void GetLonLatAlt(Double_t& lon, Double_t& lat, Double_t& alt) const;
     template <class T> void GetLonLatAlt(T& t) const;
     template <class T> void GetLonLatAlt(T* t) const;
@@ -131,6 +144,10 @@ namespace GeoidModel {
     inline Double_t Theta() const;
     inline Double_t Phi() const;
 
+    inline Pole nearerPole() const {
+      return getPole(Z());
+    }
+
 
     /** 
      * Find the value of z on Geoid surface given the values X(), Y()
@@ -140,19 +157,39 @@ namespace GeoidModel {
      * 
      * @return The value of Z
      */
-    inline double surfaceZ(Pole pole = Pole::South);
+    inline double surfaceZ(Pole pole);
+
+    /** 
+     * Find the value of z on Geoid surface given the values X(), Y()
+     * Note: There are two solutions here, the nearer solution (based  on the value of Z()) is chosen.
+     * @see surfaceZ(Pole pole)
+     * 
+     * @return The value of Z
+     */
+    inline double surfaceZ(){
+      return surfaceZ(nearerPole());
+    }
 
     /** 
      * Change z so that we are on the surface at this X(),  Y()
      * @see surfaceZ(Pole pole)
      * 
-     * @param signZ sign of Z() to move to the surface, default is towards Pole::South (near Antarctica).
+     * @param signZ pole chose the sign of Z()
      */
-    inline void moveToGeoidZ(Pole pole = Pole::South);
+    inline void moveToGeoidZ(Pole pole);    
+
+    /** 
+     * Change z so that we are on the surface at this X(),  Y()
+     * @see surfaceZ(Pole pole)
+     * 
+     */
+    inline void moveToGeoidZ(){
+      moveToGeoidZ(nearerPole());
+    }
 
 
 
-    inline Double_t Distance(const Position& p2) const;
+    inline Double_t Distance(const Position& p2) const; ///@todo make this better
 
   private:
 
@@ -308,7 +345,7 @@ namespace GeoidModel {
     return fNorthing;
   }
 
-  inline Double_t Position::GetGeoidRadius() const {
+  inline Double_t Position::Surface() const {
     return getGeoidRadiusAtCosTheta(CosTheta());
   }
 
