@@ -19,8 +19,18 @@
 #include "TCanvas.h"
 
 
-
-
+/**
+ * --------------------------------------------------------------------------------------------------------------------------------------
+ * A note on the IGRF Spherical coordinate system
+ * --------------------------------------------------------------------------------------------------------------------------------------
+ * in their notes: https://www.ngdc.noaa.gov/IAGA/vmod/igrf.html
+ * https://earth-planets-space.springeropen.com/articles/10.1186/s40623-015-0228-9
+ * theta is GEOCENTRIC colatitude (angle subtended to Earth center w.r.t north-south z-axis, with north pole is at theta=0)
+ * (that's not the same as geodetic latitude or the "normal" latitude)
+ * phi is east longitude, i.e normal longitude.
+ * This must be accounted for before/after interacting with the cartesian convention in Geoid.h
+ * @see lonLatAltToSpherical and @see sphericalToLonLatAlt
+ */
 
 // --------------------------------------------------------------------------------------------------------------------------------------
 // Silly globals, kept tucked away from prying eyes
@@ -281,11 +291,11 @@ double unixTimeToFractionalYear(UInt_t unixTime){
 
 
 
+
+
 /** 
  * Convert from longitude, latitude, altitude (above geoid) to spherical polar coordinates
  *
- * Finishes the job started in AnitaGeomTool
- * 
  * @param lon is the longitude
  * @param lat is the latitude 
  * @param alt is the altitude above the geoid in metres
@@ -296,35 +306,24 @@ double unixTimeToFractionalYear(UInt_t unixTime){
 void lonLatAltToSpherical(double lon, double lat, double alt, double& r, double& theta, double& phi){
   double cartesian[3];
   Geoid::getCartesianCoords(lat, lon, alt, cartesian);
-  double x = cartesian[0];
-  double y = cartesian[1];
-  double z = cartesian[2];
+  /**
+   * Here we compensate for the fact that our Geoid coordinate system
+   * is not the same as most geographic standards... nothing is simple
+   * See Geoid.h for a fuller explanation
+   */
+  double x = cartesian[1];
+  double y = cartesian[0];
+  double z = -cartesian[2];
 
   r = TMath::Sqrt(x*x + y*y + z*z);
   theta = r > 0 ? TMath::ACos(z/r) : 0;
-  phi = -TMath::ATan2(y, x) + 0.5*TMath::Pi();
-  phi = phi >= TMath::Pi() ?  phi - TMath::TwoPi() : phi;
+  phi = TMath::ATan2(y, x);
+  
+  // phi = phi >= TMath::Pi() ?  phi - TMath::TwoPi() : phi;
+  // phi = -TMath::ATan2(y, x) + 0.5*TMath::Pi();
+  // phi = phi >= TMath::Pi() ?  phi - TMath::TwoPi() : phi;  
 }
 
-
-
-
-/** 
- * Lon lat alt to cartesian TVector3
- * 
- * @param lon 
- * @param lat 
- * @param alt 
- * 
- * @return 
- */
-TVector3 lonLatAltToVector(double lon, double lat, double alt){
-  double r, theta, phi;
-  lonLatAltToSpherical(lon, lat, alt, r, theta, phi);
-  TVector3 v;
-  v.SetMagThetaPhi(r, theta, phi);
-  return v;
-}
 
 
 
@@ -342,27 +341,19 @@ TVector3 lonLatAltToVector(double lon, double lat, double alt){
  */
 void sphericalToLatLonAlt(double& lon, double& lat, double& alt, double r, double theta, double phi){
 
-  double x = r*TMath::Sin(phi)*TMath::Sin(theta);
-  double y = r*TMath::Cos(phi)*TMath::Sin(theta);
+  double x = r*TMath::Cos(phi)*TMath::Sin(theta);
+  double y = r*TMath::Sin(phi)*TMath::Sin(theta);
   double z = r*TMath::Cos(theta);
-  double cartesian[3] = {x, y, z};
-
+  /**
+   * Here we compensate for the fact that our Geoid coordinate system
+   * is not the same as most geographic standards... nothing is simple
+   * See Geoid.h for a fuller explanation
+   */
+  double cartesian[3] = {y, x, -z};
   Geoid::getLatLonAltFromCartesian(cartesian, lat, lon, alt);
 }
 
 
-
-/** 
- * Convert from a cartesian TVector3 to lon, lat, alt
- * 
- * @param lon 
- * @param lat 
- * @param alt 
- * @param v 
- */
-void vectorToLonLatAlt(double& lon, double& lat, double& alt, const TVector3& v){
-  sphericalToLatLonAlt(lon, lat, alt, v.Mag(), v.Theta(), v.Phi());
-}
 
 
 
@@ -537,8 +528,7 @@ double GeoMagnetic::getPotentialAtSpherical(UInt_t unixTime, double r, double th
  * @return 
  */
 double GeoMagnetic::getPotentialAtLonLatAlt(UInt_t unixTime, double lon, double lat, double alt){
-  prepareGeoMagnetics();
-  
+  prepareGeoMagnetics();  
   double r, theta, phi;
   lonLatAltToSpherical(lon, lat, alt, r, theta, phi);
   return getPotentialAtSpherical(unixTime, r, theta, phi);
@@ -562,7 +552,6 @@ double GeoMagnetic::X_atLonLatAlt(UInt_t unixTime, double lon, double lat, doubl
   prepareGeoMagnetics();
   double r, phi, theta;
   lonLatAltToSpherical(lon, lat, alt, r, theta, phi);
-
   return X_atSpherical(unixTime, r, theta, phi);
 }
 
@@ -661,6 +650,7 @@ TCanvas* GeoMagnetic::plotFieldAtAltitude(UInt_t unixTime, double altitude){
 
   TCanvas* c = new TCanvas();
   AntarcticaBackground* bg = new AntarcticaBackground();
+  bg->SetIcemask(true);
 
   int nx = bg->GetNbinsX();
   int ny = bg->GetNbinsY();
@@ -680,6 +670,10 @@ TCanvas* GeoMagnetic::plotFieldAtAltitude(UInt_t unixTime, double altitude){
       f->Draw();
     }
   }
+
+  c->Update();
+  bg->SetShowColorAxis(false);
+  
   return c;
 }
 
@@ -733,6 +727,8 @@ void GeoMagnetic::FieldPoint::Draw(Option_t* opt){
   position += fDrawScaleFactor*fField;
   sphericalToLatLonAlt(lon, lat, alt, position.Mag(), position.Theta(), position.Phi());
   RampdemReader::LonLatToEastingNorthing(lon, lat, fX2, fY2);
+
+  
   
   TArrow::Draw(opt);
 }
@@ -1086,7 +1082,7 @@ double GeoMagnetic::getAtmosphericDensity(double altitude){
  */
 TVector3 GeoMagnetic::getInitialPosition(const TVector3& destination, const TVector3& destinationToSource){
   prepareGeoMagnetics();
-
+  
   if(TMath::Abs(destinationToSource.Mag() -1) > 1e-14){
     std::cerr  << "Warning in " << __PRETTY_FUNCTION__ << ", was expecting a unit vector, didn't get one. "
                << "Got " << 1.0-destinationToSource.Mag() << " away from mag==1... This calculation might be wonky... " << std::endl;
@@ -1094,20 +1090,13 @@ TVector3 GeoMagnetic::getInitialPosition(const TVector3& destination, const TVec
   
   
   // moves out from the destination in 1km steps until the altitude is 80km
-  const double desiredAlt = 80e3; // 100 km
-  TVector3 initialPosition = destination;
-  double initialLon, initialLat, initialAlt;
-  vectorToLonLatAlt(initialLon, initialLat, initialAlt, initialPosition);
-  if(debug){
-    std::cout  <<  "Initial alt = " << initialAlt << ", (desiredAlt = "  << desiredAlt << ")" << std::endl;
-  }
-  while(initialAlt < desiredAlt){
+  const double desiredAlt = 80e3; // 80 km
+  Geoid::Position initialPosition = destination;
+  while(initialPosition.Altitude() < desiredAlt){
     initialPosition += 1e3*destinationToSource;
-    vectorToLonLatAlt(initialLon, initialLat, initialAlt, initialPosition);
-    // std::cout << initialLon << "\t" << initialLat << "\t" << initialAlt << std::endl;
   }
   if(debug){
-    std::cout << "Got initial position... " << initialLon << "\t" << initialLat << "\t" << initialAlt << std::endl;
+    std::cout << "Got initial position... " << initialPosition.Longitude() << "\t" << initialPosition.Latitude() << "\t" << initialPosition.Altitude() << std::endl;
   }
   
   return initialPosition;
@@ -1130,7 +1119,7 @@ TVector3 GeoMagnetic::getXMaxPosition(const TVector3& initialPosition, const TVe
 				      double xMax){
   prepareGeoMagnetics();
 
-  TVector3 currentPosition = initialPosition;
+  Geoid::Position currentPosition = initialPosition;
   double currentAtmosphereTraversed = 0; // kg / m ^{2}
   double dx = cosmicRayDirection.Mag();
 
@@ -1143,8 +1132,11 @@ TVector3 GeoMagnetic::getXMaxPosition(const TVector3& initialPosition, const TVe
   while(currentAtmosphereTraversed < xMax){
     
     currentPosition += cosmicRayDirection;
-    double currentLon, currentLat, currentAlt;
-    vectorToLonLatAlt(currentLon, currentLat, currentAlt, currentPosition);
+    double currentLon = currentPosition.Longitude();
+    double currentLat = currentPosition.Latitude();
+    double currentAlt = currentPosition.Altitude();
+    
+    // vectorToLonLatAlt(currentLon, currentLat, currentAlt, currentPosition);
 
     if(initialAlt==0){
       initialAlt= currentAlt;
