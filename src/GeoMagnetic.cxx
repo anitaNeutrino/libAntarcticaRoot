@@ -25,12 +25,27 @@
  * --------------------------------------------------------------------------------------------------------------------------------------
  * in their notes: https://www.ngdc.noaa.gov/IAGA/vmod/igrf.html
  * https://earth-planets-space.springeropen.com/articles/10.1186/s40623-015-0228-9
- * theta is GEOCENTRIC colatitude (angle subtended to Earth center w.r.t north-south z-axis, with north pole is at theta=0)
+ * theta is geocentric colatitude (angle subtended to Earth center w.r.t north-south z-axis, with north pole at theta=0)
  * (that's not the same as geodetic latitude or the "normal" latitude)
  * phi is east longitude, i.e normal longitude.
  * This must be accounted for before/after interacting with the cartesian convention in Geoid.h
- * @see lonLatAltToSpherical and @see sphericalToLonLatAlt
+ * @see geoidToIGRF
  */
+inline void geoidToIGRF(const Geoid::Position& p, double& r, double& theta, double& phi){
+  r = p.Mag();
+  theta = TMath::Pi() - p.Theta();
+  phi = p.Longitude()*TMath::DegToRad();
+}
+
+
+
+double X_atSpherical(UInt_t unixTime, double r, double theta, double phi);
+double Y_atSpherical(UInt_t unixTime, double r, double theta, double phi);
+double Z_atSpherical(UInt_t unixTime, double r, double theta, double phi);
+double getPotentialAtSpherical(UInt_t unixTime, double r, double theta, double phi);
+
+
+
 
 // --------------------------------------------------------------------------------------------------------------------------------------
 // Silly globals, kept tucked away from prying eyes
@@ -293,70 +308,6 @@ double unixTimeToFractionalYear(UInt_t unixTime){
 
 
 
-/** 
- * Convert from longitude, latitude, altitude (above geoid) to spherical polar coordinates
- *
- * @param lon is the longitude
- * @param lat is the latitude 
- * @param alt is the altitude above the geoid in metres
- * @param r is the radial position is metres
- * @param phi is the the azimuthal angle (increasing east from Greenwich meridian)
- * @param theta is the elevation angle (theta = 0 points to north, theta = pi points south)
- */
-void lonLatAltToSpherical(double lon, double lat, double alt, double& r, double& theta, double& phi){
-  double cartesian[3];
-  Geoid::getCartesianCoords(lat, lon, alt, cartesian);
-  /**
-   * Here we compensate for the fact that our Geoid coordinate system
-   * is not the same as most geographic standards... nothing is simple
-   * See Geoid.h for a fuller explanation
-   */
-  double x = cartesian[1];
-  double y = cartesian[0];
-  double z = -cartesian[2];
-
-  r = TMath::Sqrt(x*x + y*y + z*z);
-  theta = r > 0 ? TMath::ACos(z/r) : 0;
-  phi = TMath::ATan2(y, x);
-  
-  // phi = phi >= TMath::Pi() ?  phi - TMath::TwoPi() : phi;
-  // phi = -TMath::ATan2(y, x) + 0.5*TMath::Pi();
-  // phi = phi >= TMath::Pi() ?  phi - TMath::TwoPi() : phi;  
-}
-
-
-
-
-
-
-/** 
- * Convert from spherical polar (r, theta, phi) to lon, lat, alt
- * 
- * @param lon is the longitude (degrees)
- * @param lat is the latitude (degrees)
- * @param alt is the altitude (meters)
- * @param r is the radial position (meters)
- * @param theta is the elevation angle (radians), theta = 0 at the north pole, increases to pi at the south pole
- * @param phi is the azimuthal angle (radians), east is +ve, west is -ve.
- */
-void sphericalToLatLonAlt(double& lon, double& lat, double& alt, double r, double theta, double phi){
-
-  double x = r*TMath::Cos(phi)*TMath::Sin(theta);
-  double y = r*TMath::Sin(phi)*TMath::Sin(theta);
-  double z = r*TMath::Cos(theta);
-  /**
-   * Here we compensate for the fact that our Geoid coordinate system
-   * is not the same as most geographic standards... nothing is simple
-   * See Geoid.h for a fuller explanation
-   */
-  double cartesian[3] = {y, x, -z};
-  Geoid::getLatLonAltFromCartesian(cartesian, lat, lon, alt);
-}
-
-
-
-
-
 
 
 
@@ -397,14 +348,12 @@ void GeoMagnetic::setDebug(bool db){
  * 
  * @return the time interpolated IGRF/DGRF g coefficient
  */
-double GeoMagnetic::g(UInt_t unixTime, int n, int m){
+double g(UInt_t unixTime, int n, int m){
   prepareGeoMagnetics();
   int year = 2015;
   int index = getIndex(n, m);
   return g_vs_time[year].at(index);
 }
-
-
 
 
 
@@ -419,7 +368,7 @@ double GeoMagnetic::g(UInt_t unixTime, int n, int m){
  * 
  * @return the time interpolated IGRF h coefficient
  */
-double GeoMagnetic::h(UInt_t unixTime, int n, int m){
+double h(UInt_t unixTime, int n, int m){
   prepareGeoMagnetics();  
   int year = 2015;
   int index = getIndex(n, m);  
@@ -473,8 +422,9 @@ double evalSchmidtQuasiNormalisedAssociatedLegendre(int n, int m, double x){
  * 
  * @return 
  */
-double GeoMagnetic::getPotentialAtSpherical(UInt_t unixTime, double r, double theta, double phi){
+double getPotentialAtSpherical(UInt_t unixTime, double r, double theta, double phi){
   prepareGeoMagnetics();
+  
   int year = 2015; // for now, should be a function of time
   double V = 0; // the potential
 
@@ -484,11 +434,11 @@ double GeoMagnetic::getPotentialAtSpherical(UInt_t unixTime, double r, double th
       double mPhi = m*phi;
       double part = 0;
 
-      double this_g = GeoMagnetic::g(unixTime, n, m);
+      double this_g = g(unixTime, n, m);
       if(this_g != 0){
         part += this_g*TMath::Cos(mPhi);
       }
-      double this_h = GeoMagnetic::h(year, n, m);
+      double this_h = h(year, n, m);
       if(this_h){
         part += this_h*TMath::Sin(mPhi);
       }
@@ -500,7 +450,7 @@ double GeoMagnetic::getPotentialAtSpherical(UInt_t unixTime, double r, double th
         V += part;
 
         if(TMath::IsNaN(part)){
-          std::cout << earth_radius << "\t" << r << "\t" << pow(earth_radius/r, n+1) << "\t" << this_g << "\t" << cos(mPhi) << "\t" <<  this_h << "\t" << sin(mPhi) << "\t" << P_n_m << std::endl;
+          std::cerr << "Error  in " << __PRETTY_FUNCTION__ << ", " << earth_radius << "\t" << r << "\t" << pow(earth_radius/r, n+1) << "\t" << this_g << "\t" << cos(mPhi) << "\t" <<  this_h << "\t" << sin(mPhi) << "\t" << P_n_m << std::endl;
         }
       }
     }
@@ -515,46 +465,6 @@ double GeoMagnetic::getPotentialAtSpherical(UInt_t unixTime, double r, double th
 
 
 
-
-
-/** 
- * @brief Get the geomagnetic potential at a particular time,  longitude, latitude, and altitude
- * 
- * @param unixTime 
- * @param lon 
- * @param lat 
- * @param alt 
- * 
- * @return 
- */
-double GeoMagnetic::getPotentialAtLonLatAlt(UInt_t unixTime, double lon, double lat, double alt){
-  prepareGeoMagnetics();  
-  double r, theta, phi;
-  lonLatAltToSpherical(lon, lat, alt, r, theta, phi);
-  return getPotentialAtSpherical(unixTime, r, theta, phi);
-}
-
-
-
-
-/** 
- * Get the northwards component of the geo-magnetic field,
- * 
- * 
- * @param unixTime 
- * @param lon 
- * @param lat 
- * @param alt 
- * 
- * @return 
- */
-double GeoMagnetic::X_atLonLatAlt(UInt_t unixTime, double lon, double lat, double alt){  
-  prepareGeoMagnetics();
-  double r, phi, theta;
-  lonLatAltToSpherical(lon, lat, alt, r, theta, phi);
-  return X_atSpherical(unixTime, r, theta, phi);
-}
-
 /** 
  * Get the northwards component of the geo-magnetic field,
  * 
@@ -567,7 +477,7 @@ double GeoMagnetic::X_atLonLatAlt(UInt_t unixTime, double lon, double lat, doubl
  * @return 
  */
 
-double GeoMagnetic::X_atSpherical(UInt_t unixTime, double r, double theta, double phi){  
+double X_atSpherical(UInt_t unixTime, double r, double theta, double phi){  
   prepareGeoMagnetics();
   double V0 = getPotentialAtSpherical(unixTime, r, theta, phi);
   double V1 = getPotentialAtSpherical(unixTime, r, theta+dTheta, phi);
@@ -576,8 +486,6 @@ double GeoMagnetic::X_atSpherical(UInt_t unixTime, double r, double theta, doubl
 }
 
 
-
-
 /** 
  * Get the eastwards component of the geo-magnetic field,
  * 
@@ -588,52 +496,13 @@ double GeoMagnetic::X_atSpherical(UInt_t unixTime, double r, double theta, doubl
  * 
  * @return 
  */
-double GeoMagnetic::Y_atLonLatAlt(UInt_t unixTime, double lon,  double lat, double alt){
-  prepareGeoMagnetics();
-  double r, phi, theta;
-  lonLatAltToSpherical(lon, lat, alt, r, theta, phi);
-  return Y_atSpherical(unixTime, lon, lat, alt);
-}
-
-
-/** 
- * Get the eastwards component of the geo-magnetic field,
- * 
- * @param unixTime 
- * @param lon 
- * @param lat 
- * @param alt 
- * 
- * @return 
- */
-double GeoMagnetic::Y_atSpherical(UInt_t unixTime, double r,  double theta, double phi){
+double Y_atSpherical(UInt_t unixTime, double r,  double theta, double phi){
   prepareGeoMagnetics();
   double V0 = getPotentialAtSpherical(unixTime, r, theta, phi);
   double V1 = getPotentialAtSpherical(unixTime, r, theta, phi+dPhi);
   double BY = -(V1-V0)/(dPhi*r*TMath::Sin(theta));
   return BY;
 }
-
-
-
-
-/** 
- * Get the downwards facing component of the geomagnetic fielda
- * 
- * @param unixTime 
- * @param lon is the longitude, +ve is east, -ve is west (degrees)
- * @param lat is latitude, +ve is north, -ve is south
- * @param alt is altitude above geoid surface
- * 
- * @return Downwards component of geom-magnetic field
- */
-double GeoMagnetic::Z_atLonLatAlt(UInt_t unixTime, double lon, double lat, double alt){  
-  prepareGeoMagnetics();
-  double r, theta, phi;
-  lonLatAltToSpherical(lon, lat, alt, r, theta,  phi);
-  return Z_atSpherical(unixTime, r, theta, phi);
-}
-
 
 
 /** 
@@ -663,7 +532,7 @@ TCanvas* GeoMagnetic::plotFieldAtAltitude(UInt_t unixTime, double altitude){
     for(int bx=1; bx <= nx; bx+=arrowEvery){
       double easting = bg->GetXaxis()->GetBinLowEdge(bx);
       double lon, lat;
-      RampdemReader::EastingNorthingToLonLat(easting, northing, lon, lat);
+      Geoid::EastingNorthingToLonLat(easting, northing, lon, lat);
       FieldPoint* f = new FieldPoint(unixTime, lon, lat, altitude);
       f->SetBit(kMustCleanup);
       f->SetBit(kCanDelete);
@@ -695,7 +564,7 @@ TCanvas* GeoMagnetic::plotFieldAtAltitude(UInt_t unixTime, double altitude){
  * 
  * @return Downwards component of geomagnetic field
  */
-double GeoMagnetic::Z_atSpherical(UInt_t unixTime, double r,  double theta, double phi){
+double Z_atSpherical(UInt_t unixTime, double r,  double theta, double phi){
   prepareGeoMagnetics();
   
   double V0 = getPotentialAtSpherical(unixTime, r, theta, phi);
@@ -714,21 +583,14 @@ double GeoMagnetic::Z_atSpherical(UInt_t unixTime, double r,  double theta, doub
  */
 void GeoMagnetic::FieldPoint::Draw(Option_t* opt){
 
-  double lon, lat, alt;
-  double r = fPosition.Mag();
-  double theta = fPosition.Theta();
-  double phi = fPosition.Phi();
+  double r, theta, phi;
+  geoidToIGRF(fPosition, r, theta, phi);
+  fX1 = fPosition.Easting();
+  fY1 = fPosition.Northing();
 
-  sphericalToLatLonAlt(lon, lat, alt, r, theta, phi);
-  
-  RampdemReader::LonLatToEastingNorthing(lon, lat, fX1, fY1);
-
-  TVector3 position = fPosition;
-  position += fDrawScaleFactor*fField;
-  sphericalToLatLonAlt(lon, lat, alt, position.Mag(), position.Theta(), position.Phi());
-  RampdemReader::LonLatToEastingNorthing(lon, lat, fX2, fY2);
-
-  
+  Geoid::Position p2 = fPosition + fDrawScaleFactor*fField;
+  fX2 = p2.Easting();
+  fY2 = p2.Northing();  
   
   TArrow::Draw(opt);
 }
@@ -744,10 +606,9 @@ void GeoMagnetic::FieldPoint::Draw(Option_t* opt){
  * @param unixTime is the time at which you wish to evaluate the field
  * @param position is the cartesian position at which you wish to evaluate the field
  */
-GeoMagnetic::FieldPoint::FieldPoint(UInt_t unixTime, const TVector3& position)
-  : TArrow(0, 0, 0, 0, 0.001, "|>"), fDrawScaleFactor(10), fField(), fPosition()
+GeoMagnetic::FieldPoint::FieldPoint(UInt_t unixTime, const Geoid::Position& position)
+  : TArrow(0, 0, 0, 0, 0.001, "|>"), fDrawScaleFactor(10), fField(), fPosition(position)
 {
-  fPosition = position;
   fUnixTime = unixTime;
   calculateFieldAtPosition();  
 }
@@ -765,9 +626,10 @@ GeoMagnetic::FieldPoint::FieldPoint(UInt_t unixTime, const TVector3& position)
 GeoMagnetic::FieldPoint::FieldPoint(UInt_t unixTime, double lon, double lat, double alt)
   : TArrow(0, 0, 0, 0, 0.001, "|>"), fDrawScaleFactor(10), fField(), fPosition()
 {
-  double r, theta, phi;
-  lonLatAltToSpherical(lon, lat, alt, r, theta, phi);
-  fPosition.SetMagThetaPhi(r, theta, phi);
+  // double r, theta, phi;
+  // lonLatAltToSpherical(lon, lat, alt, r, theta, phi);
+  fPosition.SetLonLatAlt(lon, lat, alt);
+  // fPosition.SetMagThetaPhi(r, theta, phi);
   fUnixTime = unixTime;
   calculateFieldAtPosition();
 }
@@ -775,23 +637,18 @@ GeoMagnetic::FieldPoint::FieldPoint(UInt_t unixTime, double lon, double lat, dou
 
 
 
-/** 
- * Workhorse function to calcuate the magnetic field from the potential at fPosition
- * Everything difficult regarding coordinate transformations with the field is in here
- */
-void GeoMagnetic::FieldPoint::calculateFieldAtPosition(){
+TVector3 GeoMagnetic::getField(UInt_t unixTime, const Geoid::Position& pos){
+  double r, theta, phi;
+  geoidToIGRF(pos, r, theta, phi);
 
-  double r = fPosition.Mag();
-  double theta = fPosition.Theta();
-  double phi = fPosition.Phi();
+  // each of these functions calcuates calculates V0, so you could save 2 of 6 calculations here... 
+  double X = X_atSpherical(unixTime, r,  theta, phi); // north
+  double Y = Y_atSpherical(unixTime, r,  theta, phi); // east
+  double Z = Z_atSpherical(unixTime, r,  theta, phi); // down  
 
-  // each of these functions calcuates calculates V0, so you could save 2 of 6 calculations here...  
-  double X = X_atSpherical(fUnixTime, r,  theta, phi); // north
-  double Y = Y_atSpherical(fUnixTime, r,  theta, phi); // east
-  double Z = Z_atSpherical(fUnixTime, r,  theta, phi); // down
-
-  // now convert into proper spherical polar coordinates..
-  
+  // ---------------------------------------------------------------------------------------------
+  // Now I convert from Northward, Eastward, Radial into r/theta/phi in the IGRF coordinate system 
+  // ---------------------------------------------------------------------------------------------
   // X points north, but theta_hat increases to the south, so *= -1
   double B_theta = -X;
   // Y points east, if you add positive values of phi, you're going east, which is the same as spherical coordinates so the sign is the same
@@ -799,23 +656,28 @@ void GeoMagnetic::FieldPoint::calculateFieldAtPosition(){
   // Z points down, but we want the radial component to point away from the origin, so *=-1
   double B_r = -Z;
 
-  // Red for radially upwards pointing B-field
-  // Blue for radially downwards pointing B-field
-  SetLineColor(B_r > 0 ? kRed : kBlue);
-
-  // now I'm going to rotate into a cartesian coordinate system with the +ve z-axis running through the geographic north pole  
+  // ---------------------------------------------------------------------------------------
+  // Now I find find the IGRF cartesian representation of the vector field (!= Geoid cartesian)
+  // ---------------------------------------------------------------------------------------
+  // I'm going to transform the spherical unit vectors into the cartesian unit vectors xhat/yhat/zhat
+  // i.e. The cartesian coordinate system with the +ve z-axis running through the geographic north pole
+  // x = 0 at 0 degrees longitude, y must complete a RH coordinate system.
   double cos_theta = TMath::Cos(theta);
   double sin_theta = TMath::Sin(theta);
   double cos_phi = TMath::Cos(phi);
   double sin_phi = TMath::Sin(phi);
 
-  // this rotates the field components pointing along RHat, thetaHat, phiHat into the Cartesian coordinate system
-  double x = sin_theta*cos_phi*B_r + cos_theta*cos_phi*B_theta - sin_phi*B_phi;
-  double y = sin_theta*sin_phi*B_r + cos_theta*sin_phi*B_theta + cos_phi*B_phi;
-  double z = cos_theta*B_r         - sin_theta*B_theta         + 0;  
-  
-  fField.SetXYZ(x, y, z);  
+  double x_comp = sin_theta*cos_phi* (B_r) + cos_theta*cos_phi* (B_theta) - sin_phi* (B_phi);
+  double y_comp = sin_theta*sin_phi* (B_r) + cos_theta*sin_phi* (B_theta) + cos_phi* (B_phi);
+  double z_comp = cos_theta*         (B_r) - sin_theta*         (B_theta) + 0*       (B_phi);
+
+  // ---------------------------------------------------------------------------------------
+  // Finally we convert the cartesian IGRF coordinates to our Geoid cartesian coordinate system
+  // ---------------------------------------------------------------------------------------
+  TVector3 field(y_comp,  x_comp, -z_comp);
+  return field;
 }
+
 
 
 
