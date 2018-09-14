@@ -34,10 +34,11 @@ namespace Geoid {
   /**
    * Ellipsoid Constants
    */
-  static constexpr double R_EARTH =   6.378137E6;
-  static constexpr double GEOID_MAX = 6.378137E6; // parameters of geoid model
-  static constexpr double GEOID_MIN = 6.356752E6; // parameters of geoid model
+ // parameters of geoid model
   static constexpr double FLATTENING_FACTOR = (1./298.257223563);
+  static constexpr double GEOID_MAX = 6.378137E6;
+  static constexpr double R_EARTH = GEOID_MAX;
+  static constexpr double GEOID_MIN = GEOID_MAX*(1 - FLATTENING_FACTOR); // parameters of geoid model
 
 
 
@@ -113,6 +114,9 @@ namespace Geoid {
 
     Position(Double_t x, Double_t y, Double_t z) : TVector3(x, y, z) {};
     Position(const TVector3& v) : TVector3(v) {};
+    Position(const Position& p){
+      copyState(p);
+    }
 
     template <class T> Position(const T& t);
     template <class T> Position(const T* t);
@@ -214,6 +218,7 @@ namespace Geoid {
      * (marked by comments after variable beginning with //!).
      * i.e. they won't be stored in a TTree.
      */
+    void copyState(const Position& other);
 
     void updateGeoidFromCartesian() const;
     void updateAnglesFromCartesian() const;
@@ -233,7 +238,7 @@ namespace Geoid {
     mutable Double_t fNorthing  = 0; //! cached polar coordinate is not stored!
 
     mutable Double_t fCartAtLastGeoidCalc[3]       = {-1, -1, -1};    //! fX, fY, fZ when the geoid was last updated. Is not stored!
-    mutable Double_t fCartAtLastAngleCal[3]        = {0, 0, 0};       //! fX, fY, fZ when the angles were last updated. Is not stored!
+    mutable Double_t fCartAtLastAngleCalc[3]        = {0, 0, 0};       //! fX, fY, fZ when the angles were last updated. Is not stored!
     mutable Double_t fLonLatAtLastEastNorthCalc[2] = {-9999, -9999};  //! Longitude(), Latitude() when the Easting/Northing were last calculated. Is not stored!
   };
 
@@ -395,10 +400,34 @@ namespace Geoid {
 
 
 
+  inline void Position::copyState(const Position& other){
+    SetXYZ(other.X(), other.Y(), other.Z());
+    fLongitude = other.fLongitude;
+    fLatitude = other.fLatitude;
+    fAltitude = other.fAltitude;
+    fTheta = other.fTheta;
+    fPhi = other.fPhi;
+    fEasting = other.fEasting;
+    fNorthing = other.fNorthing;
+    for(int i=0; i < 3; i++){
+      fCartAtLastGeoidCalc[i] = other.fCartAtLastGeoidCalc[i];
+    }
+    for(int i=0; i < 3; i++){
+      fCartAtLastAngleCalc[i] = other.fCartAtLastAngleCalc[i];
+    }
+    for(int i=0; i < 2; i++){
+      fLonLatAtLastEastNorthCalc[i] = other.fLonLatAtLastEastNorthCalc[i];
+    }    
+  }
 
 
 
   inline Double_t getGeoidRadiusAtCosTheta(Double_t cosTheta) {
+    /**
+     * I discovered an approximately ~0.3 meter discrepancy at the poles between
+     * methods setting lon/lat/alt=0 and getGeoidRadiusAtCosTheta.
+     * Call this function with higherOrderCorrection = false to restore previous behaviour.
+     */
     return GEOID_MIN*GEOID_MAX/TMath::Sqrt(GEOID_MIN*GEOID_MIN-(GEOID_MIN*GEOID_MIN-GEOID_MAX*GEOID_MAX)*cosTheta*cosTheta);
   }
   inline Double_t getGeoidRadiusAtTheta(Double_t theta) {
@@ -446,6 +475,8 @@ namespace Geoid {
   }
   
 
+
+  
   
 }
 

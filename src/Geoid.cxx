@@ -11,7 +11,8 @@ void Geoid::getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Double_
   lon *= TMath::DegToRad();
   //calculate x,y,z coordinates
 
-  Double_t C2 = pow(TMath::Cos(lat)*TMath::Cos(lat)+(1-FLATTENING_FACTOR)*(1-FLATTENING_FACTOR)*TMath::Sin(lat)*TMath::Sin(lat),-0.5);
+  // Double_t C2 = pow(TMath::Cos(lat)*TMath::Cos(lat)+(1-FLATTENING_FACTOR)*(1-FLATTENING_FACTOR)*TMath::Sin(lat)*TMath::Sin(lat),-0.5);
+  Double_t C2 = 1./TMath::Sqrt(TMath::Cos(lat)*TMath::Cos(lat)+(1-FLATTENING_FACTOR)*(1-FLATTENING_FACTOR)*TMath::Sin(lat)*TMath::Sin(lat));
   Double_t Q2 = (1-FLATTENING_FACTOR)*(1-FLATTENING_FACTOR)*C2;
 
   // Swapping x/y and inverting z
@@ -96,6 +97,7 @@ void Geoid::Position::updateGeoidFromCartesian() const {
   if(X() != fCartAtLastGeoidCalc[0] ||
      Y() != fCartAtLastGeoidCalc[1] ||
      Z() != fCartAtLastGeoidCalc[2]){
+
     // Then we've moved, so must recalculate lon, lat alt;
     GetXYZ(fCartAtLastGeoidCalc);
     Geoid::getLatLonAltFromCartesian(fCartAtLastGeoidCalc, fLatitude, fLongitude, fAltitude);
@@ -105,19 +107,19 @@ void Geoid::Position::updateGeoidFromCartesian() const {
 
 void Geoid::Position::updateAnglesFromCartesian() const {
 
-  bool xDirty = X() != fCartAtLastAngleCal[0];
-  bool yDirty = Y() != fCartAtLastAngleCal[1];
+  bool xDirty = X() != fCartAtLastAngleCalc[0];
+  bool yDirty = Y() != fCartAtLastAngleCalc[1];
   
   if(xDirty || yDirty){
     fPhi = TVector3::Phi();
-    fCartAtLastAngleCal[0] = X();
-    fCartAtLastAngleCal[1] = Y();
+    fCartAtLastAngleCalc[0] = X();
+    fCartAtLastAngleCalc[1] = Y();
   }
 
-  if(xDirty || yDirty || Z() != fCartAtLastAngleCal[2]){
+  if(xDirty || yDirty || Z() != fCartAtLastAngleCalc[2]){
     fTheta = TVector3::Theta();
-    // if x or y was dirty, already stored them in fCartAtLastAngleCal
-    fCartAtLastAngleCal[2] = Z();
+    // if x or y was dirty, already stored them in fCartAtLastAngleCalc
+    fCartAtLastAngleCalc[2] = Z();
   }
 }
 
