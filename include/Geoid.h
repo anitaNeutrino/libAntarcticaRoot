@@ -4,6 +4,7 @@
 #include "TVector3.h"
 #include "TMath.h"
 #include <iostream>
+#include "TObject.h"
 
 /**
  * @namespace Geoid
@@ -29,6 +30,9 @@
  * and quantities like elevation are more +ve in z for higher altitude in Antarctica.
  * I suppose it does make Cartesian plots of Antarctica a bit easier to look at.
  */
+
+class TBuffer;
+
 namespace Geoid {
 
   /**
@@ -130,7 +134,7 @@ namespace Geoid {
     inline Double_t Easting() const;
     inline Double_t Northing() const;
 
-    Double_t Surface() const;
+    Double_t EllipsoidSurface() const;
     inline void GetLonLatAlt(Double_t& lon, Double_t& lat, Double_t& alt) const;
     template <class T> void GetLonLatAlt(T& t) const;
     template <class T> void GetLonLatAlt(T* t) const;
@@ -205,8 +209,8 @@ namespace Geoid {
      * representation of the position. In other words, any non-const 
      * functions ALWAYS update the fX, fY, fZ immediately
      * (fX, fY, fZ are the variable names in TVector3.)
-     * However, the fLongitude, fLatitude, fAltitude, and fTheta, fPhi,
-     * and fEasting, fNorthing are not updated, and are recalculated on
+     * However, the longitude, latitude, altitude, and theta, phi,
+     * and easting, northing are not updated, and are recalculated on
      * demand. When calculated they are stored and if fX, fY, fZ didn't change
      * The last answer will be returned again.
      *
@@ -229,17 +233,20 @@ namespace Geoid {
     void updateLonLatFromEastingNorthing(bool mustRecalcuateAltitudeFirst);
     void updateCartesianFromGeoid();
 
-    mutable Double_t fLongitude = 0; //! cached longitude is not stored!
-    mutable Double_t fLatitude  = 0; //! cached latitude is not stored!
-    mutable Double_t fAltitude  = 0; //! cached altitude is not stored!
-    mutable Double_t fTheta     = 0; //! cached angle is not stored!
-    mutable Double_t fPhi       = 0; //! cached angle is not stored!
-    mutable Double_t fEasting   = 0; //! cached polar coordinate is not stored!
-    mutable Double_t fNorthing  = 0; //! cached polar coordinate is not stored!
+    mutable Double_t longitude = 0;
+    mutable Double_t latitude  = 0;
+    mutable Double_t altitude  = 0;
+    mutable Double_t theta     = 0;
+    mutable Double_t phi       = 0;
+    mutable Double_t easting   = 0;
+    mutable Double_t northing  = 0;
+    
+    mutable std::array<Double_t, 3> fCartAtLastGeoidCalc       = {-1, -1, -1};    //! fX, fY, fZ when the geoid was last updated. Is not stored!
+    mutable std::array<Double_t, 3> fCartAtLastAngleCalc       = {0, 0, 0};       //! fX, fY, fZ when the angles were last updated. Is not stored!
+    mutable std::array<Double_t, 3> fLonLatAtLastEastNorthCalc = {-9999, -9999};  //! Longitude(), Latitude() when the Easting/Northing were last calculated. Is not stored!
 
-    mutable Double_t fCartAtLastGeoidCalc[3]       = {-1, -1, -1};    //! fX, fY, fZ when the geoid was last updated. Is not stored!
-    mutable Double_t fCartAtLastAngleCalc[3]        = {0, 0, 0};       //! fX, fY, fZ when the angles were last updated. Is not stored!
-    mutable Double_t fLonLatAtLastEastNorthCalc[2] = {-9999, -9999};  //! Longitude(), Latitude() when the Easting/Northing were last calculated. Is not stored!
+  public:
+    void Streamer(TBuffer &R__b);    
   };
 
 
@@ -266,7 +273,7 @@ namespace Geoid {
   template <class T> Position::Position(const T& t){
     SetLonLatAlt(t.longitude,  t.latitude, t.altitude);
     updateCartesianFromGeoid();
-  };
+  }
 
   template <class T> Position::Position(const T* t) : Position(*t){;}
 
@@ -275,43 +282,43 @@ namespace Geoid {
     if(lon > 180){
       lon -= 360;
     }
-    fLongitude = lon;
+    longitude = lon;
     updateCartesianFromGeoid();
   }
   inline void Position::SetLatitude(double lat){
-    fLatitude = lat;
+    latitude = lat;
     updateCartesianFromGeoid();
   }
   inline void Position::SetAltitude(double alt) {
-    fAltitude = alt;
+    altitude = alt;
     updateCartesianFromGeoid();
   }
   inline void Position::SetLonLatAlt(double lon, double lat, double alt) {
-    fLatitude = lat;
-    fAltitude = alt;
+    latitude = lat;
+    altitude = alt;
     SetLongitude(lon);
   }
 
 
   inline void Position::SetEasting(double easting) {
-    fNorthing = Northing();
-    fEasting = easting;
+    northing = Northing();
+    easting = easting;
     updateLonLatFromEastingNorthing(false);
   }
   inline void Position::SetNorthing(double northing) {    
-    fEasting = Easting();
-    fNorthing = northing;
+    easting = Easting();
+    northing = northing;
     updateLonLatFromEastingNorthing(false);
   }
   inline void Position::SetEastingNorthing(double easting, double northing) {
-    fEasting = easting;
-    fNorthing = northing;
+    easting = easting;
+    northing = northing;
     updateLonLatFromEastingNorthing(true);
   }
   inline void Position::SetEastingNorthingAlt(double easting, double northing, double alt) {
-    fEasting = easting;
-    fNorthing = northing;
-    fAltitude = alt;
+    easting = easting;
+    northing = northing;
+    altitude = alt;
     updateLonLatFromEastingNorthing(false);
   }
 
@@ -319,38 +326,38 @@ namespace Geoid {
 
   inline Double_t Position::Latitude() const {
     updateGeoidFromCartesian();
-    return fLatitude;
+    return latitude;
   }
   inline Double_t Position::Longitude() const {
     updateGeoidFromCartesian();
-    return fLongitude;
+    return longitude;
   }
   inline Double_t Position::Altitude() const {
     updateGeoidFromCartesian();
-    return fAltitude;
+    return altitude;
   }
 
   inline Double_t Position::Theta() const {
     updateAnglesFromCartesian();
-    return fTheta;
+    return theta;
   }
   inline Double_t Position::Phi() const {
     updateAnglesFromCartesian();
-    return fPhi;
+    return phi;
   }
 
 
   inline Double_t Position::Easting() const {
     updateEastingNorthingFromLonLat();
-    return fEasting;
+    return easting;
   }
 
   inline Double_t Position::Northing() const {
     updateEastingNorthingFromLonLat();
-    return fNorthing;
+    return northing;
   }
 
-  inline Double_t Position::Surface() const {
+  inline Double_t Position::EllipsoidSurface() const {
     return getGeoidRadiusAtCosTheta(CosTheta());
   }
 
@@ -402,20 +409,21 @@ namespace Geoid {
 
   inline void Position::copyState(const Position& other){
     SetXYZ(other.X(), other.Y(), other.Z());
-    fLongitude = other.fLongitude;
-    fLatitude = other.fLatitude;
-    fAltitude = other.fAltitude;
-    fTheta = other.fTheta;
-    fPhi = other.fPhi;
-    fEasting = other.fEasting;
-    fNorthing = other.fNorthing;
-    for(int i=0; i < 3; i++){
+    longitude = other.longitude;
+    latitude = other.latitude;
+
+    altitude = other.altitude;
+    theta = other.theta;
+    phi = other.phi;
+    easting = other.easting;
+    northing = other.northing;
+    for(int i=0; i < fCartAtLastGeoidCalc.size(); i++){
       fCartAtLastGeoidCalc[i] = other.fCartAtLastGeoidCalc[i];
     }
-    for(int i=0; i < 3; i++){
+    for(int i=0; i < fCartAtLastAngleCalc.size(); i++){
       fCartAtLastAngleCalc[i] = other.fCartAtLastAngleCalc[i];
     }
-    for(int i=0; i < 2; i++){
+    for(int i=0; i < fLonLatAtLastEastNorthCalc.size(); i++){
       fLonLatAtLastEastNorthCalc[i] = other.fLonLatAtLastEastNorthCalc[i];
     }    
   }
@@ -475,10 +483,19 @@ namespace Geoid {
   }
   
 
-
-  
   
 }
+
+/** 
+ * For a nice cout/cerr/logging experience
+ * 
+ * @param os is a output string stream
+ * @param v is the TVector3
+ * 
+ * @return the updated output string stream
+ */
+std::ostream& operator<<(std::ostream& os, const TVector3& v);
+
 
 
 #endif

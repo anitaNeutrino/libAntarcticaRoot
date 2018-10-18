@@ -3,6 +3,54 @@
 #include <iostream>
 
 
+#include "TBuffer.h"
+#include "TClass.h"
+#include <algorithm>
+
+/** 
+ * @brief Custom streamer for ROOT to handle the laziness of coordinate conversions.
+ * 
+ * Since phi/theta, lon/lat/alt and easting/northing are calculated lazily they might
+ * not be correct at the moment an object is written to disk if we used the default streamer.
+ * Here we implement our own streamer which injects the proper coordinate conversions before
+ * writing and initialises "AtLast" members (which aren't stored) to values that imply the
+ * stored values are correct.
+ * 
+ * @param R__b the ROOT buffer
+ */
+void Geoid::Position::Streamer(TBuffer &R__b){
+  if (R__b.IsReading()) {
+    Position::Class()->ReadBuffer(R__b, this);
+
+    fCartAtLastAngleCalc[0] = X();
+    fCartAtLastAngleCalc[1] = Y();
+    fCartAtLastAngleCalc[2] = Z();
+
+    fCartAtLastGeoidCalc[0] = X();
+    fCartAtLastGeoidCalc[1] = Y();
+    fCartAtLastGeoidCalc[2] = Z();
+
+    fLonLatAtLastEastNorthCalc[0] = longitude;
+    fLonLatAtLastEastNorthCalc[1] = latitude;
+  }
+  else {
+    // force all cached values to be correct *before* write
+    updateAnglesFromCartesian();
+    updateGeoidFromCartesian();
+    updateEastingNorthingFromLonLat();
+    Position::Class()->WriteBuffer(R__b, this);
+  }
+}
+
+
+std::ostream& operator<<(std::ostream& os, const TVector3& v){  
+  os << "(" << v.X() << "," << v.Y() << "," << v.Z() << ")";
+  return os;
+}
+
+  
+
+
 
 void Geoid::getCartesianCoords(Double_t lat, Double_t lon, Double_t alt, Double_t p[3]){
 
@@ -86,7 +134,7 @@ Double_t Geoid::getGeoidRadiusAtLatitude(Double_t latitude) {
 
 void Geoid::Position::updateCartesianFromGeoid() {
   // always called after any lon/lat/alt has been updated
-  Geoid::getCartesianCoords(fLatitude, fLongitude, fAltitude, fCartAtLastGeoidCalc);
+  Geoid::getCartesianCoords(latitude, longitude, altitude, fCartAtLastGeoidCalc.data());
   SetXYZ(fCartAtLastGeoidCalc[0], fCartAtLastGeoidCalc[1], fCartAtLastGeoidCalc[2]);
 }
 
@@ -99,8 +147,8 @@ void Geoid::Position::updateGeoidFromCartesian() const {
      Z() != fCartAtLastGeoidCalc[2]){
 
     // Then we've moved, so must recalculate lon, lat alt;
-    GetXYZ(fCartAtLastGeoidCalc);
-    Geoid::getLatLonAltFromCartesian(fCartAtLastGeoidCalc, fLatitude, fLongitude, fAltitude);
+    GetXYZ(fCartAtLastGeoidCalc.data());
+    Geoid::getLatLonAltFromCartesian(fCartAtLastGeoidCalc.data(), latitude, longitude, altitude);
   }  
 }
 
@@ -111,13 +159,13 @@ void Geoid::Position::updateAnglesFromCartesian() const {
   bool yDirty = Y() != fCartAtLastAngleCalc[1];
   
   if(xDirty || yDirty){
-    fPhi = TVector3::Phi();
+    phi = TVector3::Phi();
     fCartAtLastAngleCalc[0] = X();
     fCartAtLastAngleCalc[1] = Y();
   }
 
   if(xDirty || yDirty || Z() != fCartAtLastAngleCalc[2]){
-    fTheta = TVector3::Theta();
+    theta = TVector3::Theta();
     // if x or y was dirty, already stored them in fCartAtLastAngleCalc
     fCartAtLastAngleCalc[2] = Z();
   }
@@ -127,15 +175,15 @@ void Geoid::Position::updateAnglesFromCartesian() const {
 
 void Geoid::Position::updateEastingNorthingFromLonLat() const {
 
-  if(fLongitude != fLonLatAtLastEastNorthCalc[0] ||
-     fLatitude != fLonLatAtLastEastNorthCalc[1]){
+  if(longitude != fLonLatAtLastEastNorthCalc[0] ||
+     latitude != fLonLatAtLastEastNorthCalc[1]){
 
     fLonLatAtLastEastNorthCalc[0] = Longitude();
     fLonLatAtLastEastNorthCalc[1] = Latitude();
     
     LonLatToEastingNorthing(fLonLatAtLastEastNorthCalc[0],
 			    fLonLatAtLastEastNorthCalc[1],
-			    fEasting, fNorthing);
+			    easting, northing);
     
   }
 }
@@ -146,8 +194,8 @@ void Geoid::Position::updateLonLatFromEastingNorthing(bool mustRecalcuateAltitud
   // we must make sure altitude is up to date...
   //
   double lon, lat;
-  double alt = mustRecalcuateAltitudeFirst ? Altitude() : fAltitude;
+  double alt = mustRecalcuateAltitudeFirst ? Altitude() : altitude;
   
-  EastingNorthingToLonLat(fEasting, fNorthing, lon, lat);
+  EastingNorthingToLonLat(easting, northing, lon, lat);
   SetLonLatAlt(lon, lat, alt);
 }

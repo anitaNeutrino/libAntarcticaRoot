@@ -23,6 +23,9 @@
 #pragma link C++ class AntarcticAtmosphere::AtmosphericModel; 
 #pragma link C++ class AntarcticAtmosphere::StandardUS; 
 #pragma link C++ class AntarcticAtmosphere::ExponentialRefractivity; 
-#pragma link C++ class AntarcticAtmosphere::ArtificialInversion; 
+#pragma link C++ class AntarcticAtmosphere::ArtificialInversion;
+
+#pragma link C++ namespace Geoid;
+#pragma link C++ class Geoid::Position-;
 
 #endif
