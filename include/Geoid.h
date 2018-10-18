@@ -5,6 +5,7 @@
 #include "TMath.h"
 #include <iostream>
 #include "TObject.h"
+#include "TBuffer.h"
 
 /**
  * @namespace Geoid
@@ -121,6 +122,7 @@ namespace Geoid {
     Position(const Position& p){
       copyState(p);
     }
+    virtual ~Position(){;}
 
     template <class T> Position(const T& t);
     template <class T> Position(const T* t);
@@ -240,13 +242,13 @@ namespace Geoid {
     mutable Double_t phi       = 0;
     mutable Double_t easting   = 0;
     mutable Double_t northing  = 0;
+
+    ClassDef(Position, 1);
     
     mutable std::array<Double_t, 3> fCartAtLastGeoidCalc       = {-1, -1, -1};    //! fX, fY, fZ when the geoid was last updated. Is not stored!
     mutable std::array<Double_t, 3> fCartAtLastAngleCalc       = {0, 0, 0};       //! fX, fY, fZ when the angles were last updated. Is not stored!
     mutable std::array<Double_t, 3> fLonLatAtLastEastNorthCalc = {-9999, -9999};  //! Longitude(), Latitude() when the Easting/Northing were last calculated. Is not stored!
 
-  public:
-    void Streamer(TBuffer &R__b);    
   };
 
 

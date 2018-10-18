@@ -3,9 +3,10 @@
 #include <iostream>
 
 
-#include "TBuffer.h"
 #include "TClass.h"
 #include <algorithm>
+
+ClassImp(Geoid::Position)
 
 /** 
  * @brief Custom streamer for ROOT to handle the laziness of coordinate conversions.
@@ -38,6 +39,7 @@ void Geoid::Position::Streamer(TBuffer &R__b){
     updateAnglesFromCartesian();
     updateGeoidFromCartesian();
     updateEastingNorthingFromLonLat();
+
     Position::Class()->WriteBuffer(R__b, this);
   }
 }
