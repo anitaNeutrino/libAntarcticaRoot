@@ -70,7 +70,7 @@ namespace Geoid {
   void getLatLonAltFromCartesian(const Double_t p[3], Double_t &lat, Double_t &lon, Double_t &alt);
   Double_t getDistanceToCentreOfEarth(Double_t lat);
 
-
+  Double_t getAreaOnGeoid(Double_t lon, Double_t lat, Double_t dlon, Double_t dlat);
 
 
   

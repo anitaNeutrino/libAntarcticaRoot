@@ -131,7 +131,17 @@ Double_t Geoid::getGeoidRadiusAtLatitude(Double_t latitude) {
 
 
 
+Double_t Geoid::getAreaOnGeoid(Double_t lon, Double_t lat, Double_t dlon, Double_t dlat) {
 
+  Position v;
+  v.SetLonLatAlt(lon, lat, 0);
+
+  double minTheta = TMath::DegToRad()*(90 - (lat+dlat/2));
+  double maxTheta = minTheta + dlat*TMath::DegToRad();
+  
+  Double_t geoidRadius = getGeoidRadiusAtLatitude(lat);
+  return  geoidRadius*geoidRadius*dlon*TMath::DegToRad()*(TMath::Cos(minTheta)-TMath::Cos(maxTheta));
+}
 
 
 void Geoid::Position::updateCartesianFromGeoid() {
