@@ -99,9 +99,9 @@ inline double getIndex(int n, int m){
  */
 void getGaussCoefficients(){  
 
-  const char* anitaUtilInstallDir = getenv("ANITA_UTIL_INSTALL_DIR");
+  const char* anitaUtilInstallDir = getenv("PUEO_UTIL_INSTALL_DIR");
   if(!anitaUtilInstallDir){
-    std::cerr << "Warning in " << __FILE__ << ", ANITA_UTIL_INSTALL_DIR not set" << std::endl;
+    std::cerr << "Warning in " << __FILE__ << ", PUEO_UTIL_INSTALL_DIR not set" << std::endl;
   }
   TString fileName = TString::Format("%s/share/anitaCalib/igrf12coeffs.txt", anitaUtilInstallDir);
   std::ifstream coeffs(fileName);

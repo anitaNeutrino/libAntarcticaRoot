@@ -186,7 +186,7 @@ void BedmapReader::ReadSurfaceElevation(bool icethicknessMode) {
   char calibDir[FILENAME_MAX];
   char *calibEnv=getenv("ANITA_CALIB_DIR");
   if(!calibEnv) {
-     char *utilEnv=getenv("ANITA_UTIL_INSTALL_DIR");
+     char *utilEnv=getenv("PUEO_UTIL_INSTALL_DIR");
      if(!utilEnv)
 	sprintf(calibDir,"calib");
      else
@@ -278,7 +278,7 @@ void BedmapReader::ReadSurfaceElevationRampDem() {
   char calibDir[FILENAME_MAX];
   char *calibEnv=getenv("ANITA_CALIB_DIR");
   if(!calibEnv) {
-     char *utilEnv=getenv("ANITA_UTIL_INSTALL_DIR");
+     char *utilEnv=getenv("PUEO_UTIL_INSTALL_DIR");
      if(!utilEnv)
 	sprintf(calibDir,"calib");
      else

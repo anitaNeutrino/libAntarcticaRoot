@@ -272,7 +272,7 @@ int RampdemReader::readRAMPDEM(){
   char calibDir[FILENAME_MAX];
   char *calibEnv=getenv("ANITA_CALIB_DIR");
   if(!calibEnv) {
-    char *utilEnv=getenv("ANITA_UTIL_INSTALL_DIR");
+    char *utilEnv=getenv("PUEO_UTIL_INSTALL_DIR");
     if(!utilEnv){
       sprintf(calibDir,"calib");
     }
@@ -816,7 +816,7 @@ static const VecVec& getDataIfNeeded(RampdemReader::dataSet dataSet){
 
 
   if(data.size() == 0){
-    const char* anitaEnv = "ANITA_UTIL_INSTALL_DIR";
+    const char* anitaEnv = "PUEO_UTIL_INSTALL_DIR";
     const char* anitaUtilInstallDir = getenv(anitaEnv);
     if(anitaUtilInstallDir==NULL){
       std::cerr << "Error in " << __FILE__ << ", could not find environment variable " << anitaEnv << std::endl;
