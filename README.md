@@ -1,8 +1,12 @@
+This 'pueo' branch is for side-by-side installation of nicemc/pueoSim with icemc
+
+
 # Models of Antarctica in ROOT
 For analysis and simulation of the ANITA experiment.
 Although, much of the utilities here could apply to any Antarctic based radio neutrino experiment.
 
 ## The backstory
+
 Analysis of ANITA data and simulation of ANITA both require models of Antarctica.
 The existence of this library is an effort to deduplicate code during a comprehensive refactor of icemc (the simulation code).
 Since the analysis code was in a better state, this repository begins is a fork of the anitaEventCorrelator library, with the ANITA analysis dependent things removed.
